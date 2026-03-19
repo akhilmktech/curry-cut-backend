@@ -1,7 +1,6 @@
 const { z } = require('zod');
 
 function validateMiddleware(schema) {
-
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (result.success) {
@@ -9,27 +8,16 @@ function validateMiddleware(schema) {
       return next();
     }
 
-    const tree = z.treeifyError(result.error).properties;
+    // Standard Zod error formatting
+    const formatted = result.error.format();
     const formattedErrors = {};
 
-    for (const key in tree) {
-      const field = tree[key];
-
-      // If it's a basic field with errors
-      if (Array.isArray(field.errors) && field.errors.length > 0) {
-        formattedErrors[key] = field.errors.map(e => e.message || String(e));
+    // Flatten errors for easier frontend consumption
+    Object.keys(formatted).forEach(key => {
+      if (key !== '_errors') {
+        formattedErrors[key] = formatted[key]._errors;
       }
-
-      // If it's an array with errors in items
-      if (field.items && typeof field.items === 'object') {
-        Object.entries(field.items).forEach(([index, itemError]) => {
-          const itemKey = `${key}[${index}]`;
-          if (itemError.errors && Array.isArray(itemError.errors)) {
-            formattedErrors[itemKey] = itemError.errors.map(e => e.message || String(e));
-          }
-        });
-      }
-    }
+    });
 
     return res.status(400).json({
       status: "error",
@@ -40,3 +28,4 @@ function validateMiddleware(schema) {
 }
 
 module.exports = validateMiddleware;
+
