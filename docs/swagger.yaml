@@ -104,7 +104,7 @@ paths:
               properties:
                 name: { type: string }
                 email: { type: string, format: email }
-                mobile: { type: string, example: "12345678" }
+                mobile: { type: string, example: "1234567890" }
                 password: { type: string, minLength: 6 }
                 status: { type: string, enum: [active, inactive] }
       responses:
@@ -222,35 +222,36 @@ paths:
     post:
       tags:
         - Delivery Agent (App)
-      summary: Request password reset OTP
+      summary: Request password reset OTP (Email or Mobile)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [mobile]
               properties:
-                mobile: { type: string }
+                mobile: { type: string, description: "Provide either mobile or email" }
+                email: { type: string, format: email, description: "Provide either mobile or email" }
       responses:
         '200':
-          description: OTP sent successfully (Default 55555)
+          description: OTP sent successfully (Default 555555)
 
   /api/V1/agent/delivery-agent/verify-otp:
     post:
       tags:
         - Delivery Agent (App)
-      summary: Verify the reset OTP
+      summary: Verify the reset OTP (Email or Mobile)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [mobile, otp]
+              required: [otp]
               properties:
-                mobile: { type: string }
-                otp: { type: integer, example: 55555 }
+                mobile: { type: string, description: "Provide the same identifier used in forgot-password" }
+                email: { type: string, format: email, description: "Provide the same identifier used in forgot-password" }
+                otp: { type: integer, example: 555555 }
       responses:
         '200':
           description: OTP verified successfully
@@ -259,16 +260,17 @@ paths:
     post:
       tags:
         - Delivery Agent (App)
-      summary: Reset password after OTP verification
+      summary: Reset password after OTP verification (Email or Mobile)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [mobile, password]
+              required: [password]
               properties:
                 mobile: { type: string }
+                email: { type: string, format: email }
                 password: { type: string, minLength: 6 }
       responses:
         '200':

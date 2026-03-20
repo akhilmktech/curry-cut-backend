@@ -4,13 +4,19 @@ const bcrypt = require('bcryptjs');
 const deliveryAgentSchema = new mongoose.Schema({
   name: { type: String, required: [true, "Name is required"] },
   email: { type: String, required: [true, "Email is required"], unique: true },
-  mobile: { type: String, required: [true, "Mobile number is required"] },
+  mobile: { 
+    type: String, 
+    required: [true, "Mobile number is required"], 
+    unique: true,
+    match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"]
+  },
   password: { type: String, required: [true, "Password is required"] },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   avatar: { type: String },
   otp: { type: Number },
   otp_expiry: { type: Date },
   is_verified: { type: Boolean, default: false },
+  otp_method: { type: String, enum: ['email', 'mobile'], default: null },
   refresh_token: { type: String }
 }, { timestamps: true });
 

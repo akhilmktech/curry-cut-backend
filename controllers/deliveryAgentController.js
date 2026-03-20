@@ -25,10 +25,12 @@ exports.createAgent = catchAsync(async (req, res, next) => {
         });
     } catch (err) {
         if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern)[0];
+            const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
             return res.status(400).json({
                 status: 'error',
-                message: 'Email already exists',
-                errors: { email: ['Email already exists'] }
+                message,
+                errors: { [field]: [message] }
             });
         }
         res.status(400).json({
@@ -78,10 +80,12 @@ exports.updateAgent = catchAsync(async (req, res, next) => {
         });
     } catch (err) {
         if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern)[0];
+            const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
             return res.status(400).json({
                 status: 'error',
-                message: 'Email already exists',
-                errors: { email: ['Email already exists'] }
+                message,
+                errors: { [field]: [message] }
             });
         }
         res.status(400).json({
@@ -147,24 +151,40 @@ exports.loginAgent = catchAsync(async (req, res, next) => {
 
 // Forgot Password - Set OTP 55555
 exports.forgotPassword = catchAsync(async (req, res, next) => {
-    const { mobile } = req.body;
-    const agent = await DeliveryAgent.findOne({ mobile });
-    if (!agent) throw new NotFoundError('Agent with this mobile number not found');
+    const { email, mobile } = req.body;
+    let query = {};
+    if (email) query = { email };
+    else if (mobile) query = { mobile };
+    else return res.status(400).json({ status: 'error', message: 'Please provide email or mobile number' });
 
-    agent.otp = 55555; // Default as requested
+    const agent = await DeliveryAgent.findOne(query);
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    agent.otp = 555555; // Default as requested
     agent.otp_expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+    agent.otp_method = email ? 'email' : 'mobile';
     await agent.save();
 
-    res.status(200).json({ status: 'success', message: 'OTP sent successfully (Default: 55555)' });
+    const target = email ? 'email' : 'mobile';
+    res.status(200).json({ status: 'success', message: `OTP sent successfully to your ${target} (Default: 555555)` });
 });
 
 // Verify OTP
 exports.verifyOTP = catchAsync(async (req, res, next) => {
-    const { mobile, otp } = req.body;
-    const agent = await DeliveryAgent.findOne({ mobile, otp, otp_expiry: { $gt: Date.now() } });
+    const { email, mobile, otp } = req.body;
+    let query = { otp, otp_expiry: { $gt: Date.now() } };
+    if (email) {
+        query.email = email;
+        query.otp_method = 'email';
+    } else if (mobile) {
+        query.mobile = mobile;
+        query.otp_method = 'mobile';
+    } else return res.status(400).json({ status: 'error', message: 'Please provide email or mobile number' });
+
+    const agent = await DeliveryAgent.findOne(query);
 
     if (!agent) {
-        return res.status(400).json({ status: 'error', message: 'Invalid or expired OTP' });
+        return res.status(400).json({ status: 'error', message: 'Invalid OTP, expired, or incorrect verification method' });
     }
 
     agent.is_verified = true;
@@ -175,11 +195,16 @@ exports.verifyOTP = catchAsync(async (req, res, next) => {
 
 // Reset Password
 exports.resetPassword = catchAsync(async (req, res, next) => {
-    const { mobile, password } = req.body;
-    const agent = await DeliveryAgent.findOne({ mobile, is_verified: true });
+    const { email, mobile, password } = req.body;
+    let query = { is_verified: true };
+    if (email) query.email = email;
+    else if (mobile) query.mobile = mobile;
+    else return res.status(400).json({ status: 'error', message: 'Please provide email or mobile number' });
+
+    const agent = await DeliveryAgent.findOne(query);
 
     if (!agent) {
-        return res.status(400).json({ status: 'error', message: 'Please verify your mobile number first' });
+        return res.status(400).json({ status: 'error', message: 'Please verify your account first' });
     }
 
     agent.password = password;
