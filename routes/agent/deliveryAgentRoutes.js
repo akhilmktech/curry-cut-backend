@@ -15,5 +15,6 @@ router.get('/assigned-orders', authenticate, deliveryAgentController.getAssigned
 router.get('/order-detail/:id', authenticate, deliveryAgentController.getOrderDetail);
 router.put('/update-delivery-status/:id', authenticate, deliveryAgentController.updateDeliveryStatus);
 router.put('/update-profile', authenticate, deliveryAgentController.updateProfile);
+router.get('/profile', authenticate, deliveryAgentController.getProfile);
 
 module.exports = router;

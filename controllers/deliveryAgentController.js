@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const DeliveryAgent = require('../models/DeliveryAgent');
 const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
@@ -132,6 +133,10 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     const { order_id, agent_id } = req.body;
     const order = await Order.findOne({ order_id });
     if (!order) throw new NotFoundError('Order not found');
+
+    if (order.delivery_status === 'Delivered') {
+        return res.status(400).json({ status: 'error', message: "Cannot change delivery agent for a delivered order" });
+    }
 
     const agent = await DeliveryAgent.findById(agent_id);
     if (!agent) throw new NotFoundError('Agent not found');
@@ -287,18 +292,30 @@ exports.resetPassword = catchAsync(async (req, res, next) => {
 exports.getDeliveryStats = catchAsync(async (req, res, next) => {
     const agentId = req.user.id;
 
-    const pendingCount = await Order.countDocuments({ assigned_agent: agentId, delivery_status: { $in: ['Pending', 'Picked Up'] } });
-    const completedCount = await Order.countDocuments({ assigned_agent: agentId, delivery_status: 'Delivered' });
-    const recentOrders = await Order.find({ assigned_agent: agentId })
-        .sort({ assignment_date: -1 })
-        .limit(5);
+    const pending_count = await Order.countDocuments({ assigned_agent: agentId, delivery_status: 'Pending' });
+    const delivered_count = await Order.countDocuments({ assigned_agent: agentId, delivery_status: 'Delivered' });
+    
+    // Any order that is currently "Picked Up" by this agent
+    const current_order = await Order.findOne({ 
+        assigned_agent: agentId, 
+        delivery_status: 'Picked Up' 
+    });
+
+    const recent_activity = await Order.find({ 
+        assigned_agent: agentId, 
+        delivery_status: 'Delivered' 
+    })
+        .sort({ delivered_at: -1 })
+        .limit(5)
+        .select('order_id delivered_at total_price shipping_address');
 
     res.status(200).json({
         status: 'success',
         data: {
-            pendingCount,
-            completedCount,
-            recentOrders
+            pending_count,
+            delivered_count,
+            current_order: current_order || null,
+            recent_activity
         }
     });
 });
@@ -307,13 +324,27 @@ exports.getDeliveryStats = catchAsync(async (req, res, next) => {
 exports.getAssignedOrders = catchAsync(async (req, res, next) => {
     const agentId = req.user.id;
     const { status } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
     let query = { assigned_agent: agentId };
     if (status) query.delivery_status = status;
 
-    const orders = await Order.find(query).sort({ assignment_date: 1 }); // FIFO requested
+    const orders = await Order.find(query)
+        .sort({ assignment_date: 1 }) // FIFO
+        .skip(skip)
+        .limit(limit);
 
-    res.status(200).json({ status: 'success', data: orders });
+    const total = await Order.countDocuments(query);
+
+    res.status(200).json({ 
+        status: 'success', 
+        total,
+        page,
+        limit,
+        data: orders 
+    });
 });
 
 // Get Order Detail
@@ -341,8 +372,87 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
     order.delivery_status = status;
     if (status === 'Picked Up') order.picked_up_at = new Date();
     if (status === 'Delivered') order.delivered_at = new Date();
+    if (status === 'Cancelled') order.cancelled_at = new Date();
 
     await order.save();
 
     res.status(200).json({ status: 'success', message: `Order status updated to ${status}`, data: order });
+});
+// Get Profile Data (Agent App)
+exports.getProfile = catchAsync(async (req, res, next) => {
+    const agent = await DeliveryAgent.findById(req.user.id).lean();
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    const total_delivered_count = await Order.countDocuments({ 
+        assigned_agent: req.user.id, 
+        delivery_status: 'Delivered' 
+    });
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            ...agent,
+            total_delivered_count
+        }
+    });
+});
+
+// --- Admin Only Controllers ---
+
+// Get Agent Details with Stats and Orders
+exports.getAgentDetails = catchAsync(async (req, res, next) => {
+    const { id } = req.params;
+    const { status, page = 1, limit = 10 } = req.query;
+
+    const agent = await DeliveryAgent.findById(id).lean();
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    // Fetch stats
+    const stats = await Order.aggregate([
+        { $match: { assigned_agent: new mongoose.Types.ObjectId(id) } },
+        { 
+            $group: { 
+                _id: "$delivery_status", 
+                count: { $sum: 1 } 
+            } 
+        }
+    ]);
+
+    const statsMap = {
+        Pending: 0,
+        'Picked Up': 0,
+        Delivered: 0,
+        Cancelled: 0
+    };
+    stats.forEach(s => {
+        if (s._id) statsMap[s._id] = s.count;
+    });
+
+    // Fetch orders with pagination and filter
+    let query = { assigned_agent: id };
+    if (status) query.delivery_status = status;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const orders = await Order.find(query)
+        .sort({ assignment_date: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+    const totalOrders = await Order.countDocuments(query);
+
+    res.status(200).json({
+        status: 'success',
+        data: {
+            agent,
+            stats: statsMap,
+            orders,
+            pagination: {
+                total: totalOrders,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                pages: Math.ceil(totalOrders / parseInt(limit))
+            }
+        }
+    });
 });

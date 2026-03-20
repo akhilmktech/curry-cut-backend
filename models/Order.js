@@ -37,6 +37,7 @@ const orderSchema = new mongoose.Schema({
   total_price: { type: Number },
   total_tax: { type: Number, default: 0 },
   subtotal_price: {type:Number,default:0},
+  delivery_amount: { type: Number, default: 0 },
   shipping_address:{type: String},
   customer: {type:String},
   deleted_at:{type:String},
@@ -75,7 +76,7 @@ const orderSchema = new mongoose.Schema({
   line_items: [lineItemSchema],
   assigned_agent: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryAgent', default: null },
   assignment_date: { type: Date, default: null },
-  delivery_status: { type: String, enum: ['Pending', 'Picked Up', 'Delivered'], default: 'Pending' },
+  delivery_status: { type: String, enum: ['Pending', 'Picked Up', 'Delivered', 'Cancelled'], default: 'Pending' },
   picked_up_at: { type: Date, default: null },
   delivered_at: { type: Date, default: null }
 });

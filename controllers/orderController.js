@@ -103,6 +103,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          fulfillment_status: order?.line_items?.find(lineItem => item?.id == lineItem?.id)?.fulfillment_status
       }));
       orderExists.currency = order?.currency;
+      orderExists.delivery_amount = Number(order?.shipping_lines?.[0]?.price || order?.total_shipping_price_set?.shop_money?.amount || 0);
       const data = await orderExists.save();
       return res.status(200).json({ status: "success", message: "order payment successful", data: data });
    }
@@ -190,6 +191,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       total_price: order?.total_price || null,
       total_tax: order?.total_tax || null,
       subtotal_price: order?.subtotal_price || null,
+      delivery_amount: Number(order?.shipping_lines?.[0]?.price || order?.total_shipping_price_set?.shop_money?.amount || 0),
       shipping_address: order?.shipping_address || {},
       customer: order?.customer || {},
       line_items: lineItems
@@ -261,7 +263,7 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
    const orderId = req.params.id;
   
    // Fetch the order by ID
-   const order = await Order.findById(orderId).lean();
+   const order = await Order.findById(orderId).populate('assigned_agent').lean();
    if (!order) {
       return next(new NotFoundError("Order not found"));
    }
