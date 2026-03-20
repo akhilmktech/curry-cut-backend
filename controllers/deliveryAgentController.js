@@ -10,12 +10,14 @@ const jwt = require('jsonwebtoken');
 // Create Delivery Agent
 exports.createAgent = catchAsync(async (req, res, next) => {
     try {
-        const { name, email, mobile, password, status } = req.body;
+        const { name, email, mobile, password, status, vehicle_type, avatar } = req.body;
         const agent = await DeliveryAgent.create({
             name,
             email,
             mobile,
             password,
+            vehicle_type,
+            avatar,
             status: status?.toLowerCase() || 'active'
         });
 
