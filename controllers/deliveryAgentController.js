@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, InternalServerError } = require('../utils/customErrors');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateTokens');
+const jwt = require('jsonwebtoken');
 
 // --- Admin Controllers ---
 
@@ -65,14 +66,20 @@ exports.getAgents = catchAsync(async (req, res, next) => {
 exports.updateAgent = catchAsync(async (req, res, next) => {
     try {
         if (req.body.status) req.body.status = req.body.status.toLowerCase();
-        
-        const agent = await DeliveryAgent.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-            runValidators: true
-        });
 
+        // Remove password from update body to prevent inadvertent password changes
+        delete req.body.password;
+        
+        const agent = await DeliveryAgent.findById(req.params.id);
         if (!agent) throw new NotFoundError('Agent not found');
 
+        // Update fields
+        Object.keys(req.body).forEach(key => {
+            agent[key] = req.body[key];
+        });
+
+        await agent.save();
+        
         res.status(200).json({
             status: 'success',
             message: 'Agent updated successfully',
@@ -101,6 +108,21 @@ exports.deleteAgent = catchAsync(async (req, res, next) => {
     const agent = await DeliveryAgent.findByIdAndDelete(req.params.id);
     if (!agent) throw new NotFoundError('Agent not found');
     res.status(200).json({ status: 'success', message: 'Agent deleted successfully' });
+});
+
+// Update Agent Password
+exports.updateAgentPassword = catchAsync(async (req, res, next) => {
+    const { password } = req.body;
+    if (!password) {
+        return res.status(400).json({ status: 'error', message: 'Password is required' });
+    }
+    const agent = await DeliveryAgent.findById(req.params.id);
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    agent.password = password;
+    await agent.save();
+
+    res.status(200).json({ status: 'success', message: 'Password updated successfully' });
 });
 
 // Assign Agent to Order
@@ -147,6 +169,28 @@ exports.loginAgent = catchAsync(async (req, res, next) => {
         refreshToken,
         data: agent
     });
+});
+
+// Refresh Token
+exports.refreshToken = catchAsync(async (req, res, next) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+        return res.status(400).json({ status: 'error', message: 'Refresh token is required' });
+    }
+    try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const agent = await DeliveryAgent.findById(decoded.id);
+        if (!agent || agent.refresh_token !== refreshToken) {
+            return res.status(403).json({ status: 'error', message: 'Forbidden' });
+        }
+        const newAccessToken = generateAccessToken(agent);
+        const newRefreshToken = generateRefreshToken(agent);
+        agent.refresh_token = newRefreshToken;
+        await agent.save();
+        res.json({ status: 'success', accessToken: newAccessToken, refreshToken: newRefreshToken });
+    } catch (err) {
+        return res.status(401).json({ status: 'error', message: 'Invalid refresh token' });
+    }
 });
 
 // Forgot Password - Set OTP 55555

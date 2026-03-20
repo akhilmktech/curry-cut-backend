@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  title: Menahub Api
+  title: Curry Cut Api
   version: 1.0.0
-  description: API documentation for Menahub Admin and Delivery Agent App.
+  description: API documentation for Curry Cut Admin and Delivery Agent App.
 
 servers:
   - url: http://localhost:3002
@@ -138,7 +138,7 @@ paths:
     put:
       tags:
         - Delivery Agent (Admin)
-      summary: Update a delivery agent
+      summary: Update a delivery agent (Excluding Password)
       security:
         - bearerAuth: []
       parameters:
@@ -155,11 +155,34 @@ paths:
                 name: { type: string }
                 email: { type: string, format: email }
                 mobile: { type: string }
-                password: { type: string }
                 status: { type: string, enum: [active, inactive] }
       responses:
         '200':
           description: Agent updated successfully
+  /api/V1/admin/delivery-agent/update-password/{id}:
+    put:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Update a delivery agent's password
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 6 }
+      responses:
+        '200':
+          description: Password updated successfully
 
   /api/V1/admin/delivery-agent/delete/{id}:
     delete:
@@ -203,7 +226,7 @@ paths:
     post:
       tags:
         - Delivery Agent (App)
-      summary: Delivery agent login
+      summary: Login for delivery agent
       requestBody:
         required: true
         content:
@@ -217,6 +240,30 @@ paths:
       responses:
         '200':
           description: Login successful
+        '401':
+          description: Invalid email or password
+
+  /api/V1/agent/delivery-agent/refresh-token:
+    post:
+      tags:
+        - Delivery Agent (App)
+      summary: Refresh access token for delivery agent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Token refreshed successfully
+        '401':
+          description: Invalid refresh token
+        '403':
+          description: Forbidden
 
   /api/V1/agent/delivery-agent/forgot-password:
     post:

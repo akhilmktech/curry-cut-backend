@@ -20,6 +20,21 @@ const seedPermissions = async () => {
         permission_name: 'Delivery Agent Add',
         page_url: '/delivery-agents', // Modal based, so same page
         group: 'Delivery'
+      },
+      {
+        permission_name: 'Delivery Agent Update',
+        page_url: '/delivery-agents', 
+        group: 'Delivery'
+      },
+      {
+        permission_name: 'Delivery Agent Delete',
+        page_url: '/delivery-agents', 
+        group: 'Delivery'
+      },
+      {
+        permission_name: 'Delivery Agent Password Update',
+        page_url: '/delivery-agents', 
+        group: 'Delivery'
       }
     ];
 

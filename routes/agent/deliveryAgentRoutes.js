@@ -4,6 +4,7 @@ const deliveryAgentController = require('../../controllers/deliveryAgentControll
 const { authenticate } = require('../../middleware/authMiddleware');
 
 router.post('/login', deliveryAgentController.loginAgent);
+router.post('/refresh-token', deliveryAgentController.refreshToken);
 router.post('/forgot-password', deliveryAgentController.forgotPassword);
 router.post('/verify-otp', deliveryAgentController.verifyOTP);
 router.post('/reset-password', deliveryAgentController.resetPassword);
