@@ -106,6 +106,7 @@ paths:
                 email: { type: string, format: email }
                 mobile: { type: string, example: "1234567890" }
                 password: { type: string, minLength: 6 }
+                vehicle_type: { type: string, enum: [bike, car, van, other] }
                 status: { type: string, enum: [active, inactive] }
       responses:
         '201':
@@ -155,6 +156,7 @@ paths:
                 name: { type: string }
                 email: { type: string, format: email }
                 mobile: { type: string }
+                vehicle_type: { type: string, enum: [bike, car, van, other] }
                 status: { type: string, enum: [active, inactive] }
       responses:
         '200':
@@ -264,6 +266,29 @@ paths:
           description: Invalid refresh token
         '403':
           description: Forbidden
+
+  /api/V1/agent/delivery-agent/update-profile:
+    put:
+      tags:
+        - Delivery Agent (App)
+      summary: Update delivery agent profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                mobile: { type: string }
+                vehicle_type: { type: string, enum: [bike, car, van, other] }
+                avatar: { type: string }
+      responses:
+        '200':
+          description: Profile updated successfully
 
   /api/V1/agent/delivery-agent/forgot-password:
     post:

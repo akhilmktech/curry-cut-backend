@@ -193,6 +193,27 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
     }
 });
 
+// Update Profile (Agent App)
+exports.updateProfile = catchAsync(async (req, res, next) => {
+    const agent = await DeliveryAgent.findById(req.user.id);
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    const allowedUpdates = ['name', 'email', 'mobile', 'vehicle_type', 'avatar'];
+    Object.keys(req.body).forEach(key => {
+        if (allowedUpdates.includes(key)) {
+            agent[key] = req.body[key];
+        }
+    });
+
+    await agent.save();
+
+    res.status(200).json({
+        status: 'success',
+        message: 'Profile updated successfully',
+        data: agent
+    });
+});
+
 // Forgot Password - Set OTP 55555
 exports.forgotPassword = catchAsync(async (req, res, next) => {
     const { email, mobile } = req.body;

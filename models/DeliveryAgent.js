@@ -11,6 +11,11 @@ const deliveryAgentSchema = new mongoose.Schema({
     match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"]
   },
   password: { type: String, required: [true, "Password is required"] },
+  vehicle_type: { 
+    type: String, 
+    required: [true, "Vehicle type is required"],
+    enum: ['bike', 'car', 'van', 'other']
+  },
   status: { type: String, enum: ['active', 'inactive'], default: 'active' },
   avatar: { type: String },
   otp: { type: Number },
