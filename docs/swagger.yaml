@@ -2,9 +2,11 @@ openapi: 3.0.0
 info:
   title: Menahub Api
   version: 1.0.0
+  description: API documentation for Menahub Admin and Delivery Agent App.
 
 servers:
   - url: http://localhost:3002
+    description: Development server
 
 components:
   securitySchemes:
@@ -44,78 +46,343 @@ components:
           type: string
           example: User already exists
 
-paths:
-  /api/V1/auth/register:
-    post:
-      tags:
-        - Auth
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - name
-                - email
-                - password
-              properties:
-                name:
-                  type: string
-                  minLength: 1
-                  description: Full name of the user
-                email:
-                  type: string
-                  format: email
-                  description: Valid email address
-                password:
-                  type: string
-                  minLength: 6
-                  description: Minimum 6 characters
-      responses:
-        '201':
-          description: User registered successfully
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationError'
-        '409':
-          description: Conflict (e.g., user already exists)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ConflictError'
+    SuccessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: success
+        message:
+          type: string
+        data:
+          type: object
 
+  responses:
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+paths:
+  # --- Auth APIs ---
   /api/V1/auth/login:
     post:
       tags:
         - Auth
-      summary: Login user
+      summary: Admin/Vendor login
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required:
-                - email
-                - password
+              required: [email, password]
               properties:
-                email:
-                  type: string
-                  format: email
-                password:
-                  type: string
-                  minLength: 6
+                email: { type: string, format: email }
+                password: { type: string }
       responses:
         '200':
           description: Login successful
+
+  # --- Admin Delivery Agent APIs ---
+  /api/V1/admin/delivery-agent/create:
+    post:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Create a new delivery agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, mobile, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                mobile: { type: string, example: "12345678" }
+                password: { type: string, minLength: 6 }
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        '201':
+          description: Agent created successfully
         '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationError'
+          $ref: '#/components/responses/ValidationError'
+
+  /api/V1/admin/delivery-agent/list:
+    get:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Get all delivery agents (Paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: search
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of agents fetched successfully
+
+  /api/V1/admin/delivery-agent/update/{id}:
+    put:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Update a delivery agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                mobile: { type: string }
+                password: { type: string }
+                status: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: Agent updated successfully
+
+  /api/V1/admin/delivery-agent/delete/{id}:
+    delete:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Delete a delivery agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Agent deleted successfully
+
+  /api/V1/admin/delivery-agent/assign-order:
+    post:
+      tags:
+        - Delivery Agent (Admin)
+      summary: Assign an agent to an order
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, agent_id]
+              properties:
+                order_id: { type: string }
+                agent_id: { type: string }
+      responses:
+        '200':
+          description: Agent assigned to order successfully
+
+  # --- Delivery Agent Mobile App APIs ---
+  /api/V1/agent/delivery-agent/login:
+    post:
+      tags:
+        - Delivery Agent (App)
+      summary: Delivery agent login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+
+  /api/V1/agent/delivery-agent/forgot-password:
+    post:
+      tags:
+        - Delivery Agent (App)
+      summary: Request password reset OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile]
+              properties:
+                mobile: { type: string }
+      responses:
+        '200':
+          description: OTP sent successfully (Default 55555)
+
+  /api/V1/agent/delivery-agent/verify-otp:
+    post:
+      tags:
+        - Delivery Agent (App)
+      summary: Verify the reset OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, otp]
+              properties:
+                mobile: { type: string }
+                otp: { type: integer, example: 55555 }
+      responses:
+        '200':
+          description: OTP verified successfully
+
+  /api/V1/agent/delivery-agent/reset-password:
+    post:
+      tags:
+        - Delivery Agent (App)
+      summary: Reset password after OTP verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, password]
+              properties:
+                mobile: { type: string }
+                password: { type: string, minLength: 6 }
+      responses:
+        '200':
+          description: Password reset successfully
+
+  /api/V1/agent/delivery-agent/dashboard-stats:
+    get:
+      tags:
+        - Delivery Agent (App)
+      summary: Get agent dashboard statistics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stats fetched successfully (pending, completed, recent orders)
+
+  /api/V1/agent/delivery-agent/assigned-orders:
+    get:
+      tags:
+        - Delivery Agent (App)
+      summary: Get all assigned orders for the logged-in agent (FIFO)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [Pending, Picked Up, Delivered] }
+      responses:
+        '200':
+          description: List of assigned orders fetched successfully
+
+  /api/V1/agent/delivery-agent/order-detail/{id}:
+    get:
+      tags:
+        - Delivery Agent (App)
+      summary: Get detailed information for a specific order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Order details fetched successfully
+
+  /api/V1/agent/delivery-agent/update-delivery-status/{id}:
+    put:
+      tags:
+        - Delivery Agent (App)
+      summary: Update the delivery status (Picked Up / Delivered)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: ['Picked Up', 'Delivered'] }
+      responses:
+        '200':
+          description: Delivery status updated successfully
+
+  # --- Admin Management APIs ---
+  /api/V1/users:
+    get:
+      tags: [Admin Management]
+      summary: Get all users
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Success }
+    post:
+      tags: [Admin Management]
+      summary: Create user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Created }
+
+  /api/V1/roles:
+    get:
+      tags: [Admin Management]
+      summary: Get all roles
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Success }
+    post:
+      tags: [Admin Management]
+      summary: Create role
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Created }
+
+  /api/V1/permissions:
+    get:
+      tags: [Admin Management]
+      summary: Get all permissions
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Success }
+
+  # --- Orders Management APIs ---
+  /api/V1/orders:
+    get:
+      tags: [Orders]
+      summary: Get all orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Success }
