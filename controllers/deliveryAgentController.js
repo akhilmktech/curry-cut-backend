@@ -456,3 +456,44 @@ exports.getAgentDetails = catchAsync(async (req, res, next) => {
         }
     });
 });
+
+// Change Password (Agent App)
+exports.changePasswordAgent = catchAsync(async (req, res, next) => {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Both old and new passwords are required'
+        });
+    }
+
+    // Check if old and new passwords are the same (case-insensitive)
+    if (oldPassword.toLowerCase() === newPassword.toLowerCase()) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'New password cannot be the same as the old password'
+        });
+    }
+
+    const agent = await DeliveryAgent.findById(req.user.id).select('+password');
+    if (!agent) throw new NotFoundError('Agent not found');
+
+    // Check if old password is correct
+    const isMatch = await agent.comparePassword(oldPassword);
+    if (!isMatch) {
+        return res.status(401).json({
+            status: 'error',
+            message: 'Incorrect old password'
+        });
+    }
+
+    // Update password
+    agent.password = newPassword;
+    await agent.save();
+
+    res.status(200).json({
+        status: 'success',
+        message: 'Password changed successfully'
+    });
+});
