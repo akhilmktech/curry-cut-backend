@@ -70,9 +70,16 @@ const uploadBannerImage = multer({
   limits:{fileSize:10*1024*1024}
 })
 
+const uploadAgentAvatar = multer({
+  storage: getStorage('agents'),
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
 module.exports = {
   uploadProductImages,
   uploadCategoryImage,
   uploadBannerImage,
-  uploadBrandImage
+  uploadBrandImage,
+  uploadAgentAvatar
 };

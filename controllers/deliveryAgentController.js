@@ -205,12 +205,18 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     const agent = await DeliveryAgent.findById(req.user.id);
     if (!agent) throw new NotFoundError('Agent not found');
 
-    const allowedUpdates = ['name', 'email', 'mobile', 'vehicle_type', 'avatar'];
+    const allowedUpdates = ['name', 'email', 'mobile', 'vehicle_type'];
     Object.keys(req.body).forEach(key => {
         if (allowedUpdates.includes(key)) {
             agent[key] = req.body[key];
         }
     });
+
+    if (req.file) {
+        agent.avatar = `uploads/agents/${req.file.filename}`;
+    } else if (req.body.avatar === null || req.body.avatar === '') {
+        agent.avatar = null;
+    }
 
     await agent.save();
 
