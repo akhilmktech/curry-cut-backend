@@ -99,7 +99,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               required: [name, email, mobile, password]
@@ -110,6 +110,7 @@ paths:
                 password: { type: string, minLength: 6 }
                 vehicle_type: { type: string, enum: [bike, car, van, other] }
                 status: { type: string, enum: [active, inactive] }
+                avatar: { type: string, format: binary }
       responses:
         '201':
           description: Agent created successfully
@@ -151,7 +152,7 @@ paths:
           schema: { type: string }
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
             schema:
               type: object
               properties:
@@ -160,6 +161,7 @@ paths:
                 mobile: { type: string }
                 vehicle_type: { type: string, enum: [bike, car, van, other] }
                 status: { type: string, enum: [active, inactive] }
+                avatar: { type: string, format: binary }
       responses:
         '200':
           description: Agent updated successfully
@@ -475,6 +477,13 @@ paths:
       responses:
         '200':
           description: Order details fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  data: { type: object }
         '404':
           description: Order not found
         '403':
@@ -504,6 +513,14 @@ paths:
       responses:
         '200':
           description: Delivery status updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: success }
+                  message: { type: string }
+                  data: { type: object }
 
   /api/V1/agent/delivery-agent/profile:
     get:
@@ -525,11 +542,15 @@ paths:
                     type: object
                     properties:
                       total_delivered_count: { type: integer }
+                      _id: { type: string }
                       name: { type: string }
                       email: { type: string }
                       mobile: { type: string }
                       vehicle_type: { type: string }
-                      avatar: { type: string }
+                      status: { type: string }
+                      avatar: { type: string, nullable: true }
+                      createdAt: { type: string, format: date-time }
+                      updatedAt: { type: string, format: date-time }
 
   # --- Admin Management APIs ---
   /api/V1/users:

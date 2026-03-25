@@ -5,13 +5,21 @@ const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, InternalServerError } = require('../utils/customErrors');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateTokens');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
+const path = require('path');
 
 // --- Admin Controllers ---
 
 // Create Delivery Agent
 exports.createAgent = catchAsync(async (req, res, next) => {
     try {
-        const { name, email, mobile, password, status, vehicle_type, avatar } = req.body;
+        const { name, email, mobile, password, status, vehicle_type } = req.body;
+        let avatar = req.body.avatar;
+
+        if (req.file) {
+            avatar = `agents/${req.file.filename}`;
+        }
+
         const agent = await DeliveryAgent.create({
             name,
             email,
@@ -76,9 +84,39 @@ exports.updateAgent = catchAsync(async (req, res, next) => {
         const agent = await DeliveryAgent.findById(req.params.id);
         if (!agent) throw new NotFoundError('Agent not found');
 
+        // Handle file upload
+        if (req.file) {
+            // Delete old avatar if it exists
+            if (agent.avatar) {
+                const oldPath = path.join(__dirname, '..', 'uploads', agent.avatar);
+                if (fs.existsSync(oldPath)) {
+                    try {
+                        fs.unlinkSync(oldPath);
+                    } catch (e) {
+                        console.error('Failed to delete old avatar:', e);
+                    }
+                }
+            }
+            agent.avatar = `agents/${req.file.filename}`;
+        } else if (req.body.avatar === null || req.body.avatar === '') {
+            if (agent.avatar) {
+                const oldPath = path.join(__dirname, '..', 'uploads', agent.avatar);
+                if (fs.existsSync(oldPath)) {
+                    try {
+                        fs.unlinkSync(oldPath);
+                    } catch (e) {
+                        console.error('Failed to delete old avatar:', e);
+                    }
+                }
+            }
+            agent.avatar = null;
+        }
+
         // Update fields
         Object.keys(req.body).forEach(key => {
-            agent[key] = req.body[key];
+            if (key !== 'avatar') {
+                agent[key] = req.body[key];
+            }
         });
 
         await agent.save();
@@ -213,8 +251,29 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     });
 
     if (req.file) {
-        agent.avatar = `uploads/agents/${req.file.filename}`;
+        // Delete old avatar if it exists
+        if (agent.avatar) {
+            const oldPath = path.join(__dirname, '..', 'uploads', agent.avatar);
+            if (fs.existsSync(oldPath)) {
+                try {
+                    fs.unlinkSync(oldPath);
+                } catch (e) {
+                    console.error('Failed to delete old avatar:', e);
+                }
+            }
+        }
+        agent.avatar = `agents/${req.file.filename}`;
     } else if (req.body.avatar === null || req.body.avatar === '') {
+        if (agent.avatar) {
+            const oldPath = path.join(__dirname, '..', 'uploads', agent.avatar);
+            if (fs.existsSync(oldPath)) {
+                try {
+                    fs.unlinkSync(oldPath);
+                } catch (e) {
+                    console.error('Failed to delete old avatar:', e);
+                }
+            }
+        }
         agent.avatar = null;
     }
 
