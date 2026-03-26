@@ -7,6 +7,7 @@ const { generateAccessToken, generateRefreshToken } = require('../utils/generate
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
+const getFullUrl = require('../utils/fullUrl');
 
 // --- Admin Controllers ---
 
@@ -33,7 +34,10 @@ exports.createAgent = catchAsync(async (req, res, next) => {
         res.status(201).json({
             status: 'success',
             message: 'Agent created successfully',
-            data: agent
+            data: {
+                ...agent.toObject(),
+                avatar: getFullUrl(req, agent.avatar)
+            }
         });
     } catch (err) {
         if (err.code === 11000) {
@@ -69,7 +73,10 @@ exports.getAgents = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         total,
-        data: agents
+        data: agents.map(agent => ({
+            ...agent.toObject(),
+            avatar: getFullUrl(req, agent.avatar)
+        }))
     });
 });
 
@@ -124,7 +131,10 @@ exports.updateAgent = catchAsync(async (req, res, next) => {
         res.status(200).json({
             status: 'success',
             message: 'Agent updated successfully',
-            data: agent
+            data: {
+                ...agent.toObject(),
+                avatar: getFullUrl(req, agent.avatar)
+            }
         });
     } catch (err) {
         if (err.code === 11000) {
@@ -212,7 +222,10 @@ exports.loginAgent = catchAsync(async (req, res, next) => {
         message: 'Login successful',
         accessToken,
         refreshToken,
-        data: agent
+        data: {
+            ...agent.toObject(),
+            avatar: getFullUrl(req, agent.avatar)
+        }
     });
 });
 
@@ -282,7 +295,10 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         message: 'Profile updated successfully',
-        data: agent
+        data: {
+            ...agent.toObject(),
+            avatar: getFullUrl(req, agent.avatar)
+        }
     });
 });
 
@@ -443,6 +459,16 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
 
     res.status(200).json({ status: 'success', message: `Order status updated to ${status}`, data: order });
 });
+
+// Helper for formatting agent with full avatar
+const formatAgent = (req, agent) => {
+    if (!agent) return null;
+    const agentObj = typeof agent.toObject === 'function' ? agent.toObject() : agent;
+    return {
+        ...agentObj,
+        avatar: getFullUrl(req, agentObj.avatar)
+    };
+};
 // Get Profile Data (Agent App)
 exports.getProfile = catchAsync(async (req, res, next) => {
     const agent = await DeliveryAgent.findById(req.user.id);
@@ -456,7 +482,7 @@ exports.getProfile = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         data: {
-            ...agent.toJSON(),
+            ...formatAgent(req, agent),
             total_delivered_count
         }
     });
@@ -509,7 +535,7 @@ exports.getAgentDetails = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         data: {
-            agent: agent.toJSON(),
+            agent: formatAgent(req, agent),
             stats: statsMap,
             orders,
             pagination: {

@@ -6,6 +6,7 @@ const {
   InternalServerError,
 } = require('../utils/customErrors');
 const CollectionImage = require('../models/CollectionImageSchema');
+const getFullUrl = require('../utils/fullUrl');
 
 /**
  * Create Collection Image
@@ -34,7 +35,10 @@ exports.createCollectionImage = catchAsync(async (req, res) => {
 
   res.status(201).json({
     status: 'success',
-    data: collectionImage
+    data: {
+      ...collectionImage.toObject(),
+      image: getFullUrl(req, collectionImage.image)
+    }
   });
 });
 
@@ -51,7 +55,10 @@ exports.getCollectionImage = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: 'success',
-    data: collectionImage,
+    data: {
+      ...collectionImage.toObject(),
+      image: getFullUrl(req, collectionImage.image)
+    },
   });
 });
 
@@ -70,7 +77,10 @@ exports.getCollectionImages = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: 'success',
-    data: images,
+    data: images.map(img => ({
+      ...img.toObject(),
+      image: getFullUrl(req, img.image)
+    })),
   });
 });
 
@@ -114,7 +124,10 @@ exports.updateCollectionImage = catchAsync(async (req, res) => {
 
   res.status(200).json({
     status: 'success',
-    data: collectionImage
+    data: {
+      ...collectionImage.toObject(),
+      image: getFullUrl(req, collectionImage.image)
+    }
   });
 });
 

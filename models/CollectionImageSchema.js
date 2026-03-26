@@ -17,25 +17,7 @@ const CollectionImageSchema = new mongoose.Schema(
       required:[true,"Collection name is required"]
     }
   },
-  { 
-    timestamps: true,
-    toJSON: {
-      transform: (doc, ret) => {
-        if (ret.image && !ret.image.startsWith('http')) {
-          ret.image = `${process.env.BASE_URL_TWO}uploads/${ret.image}`;
-        }
-        return ret;
-      }
-    },
-    toObject: {
-      transform: (doc, ret) => {
-        if (ret.image && !ret.image.startsWith('http')) {
-          ret.image = `${process.env.BASE_URL_TWO}uploads/${ret.image}`;
-        }
-        return ret;
-      }
-    }
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("CollectionImage", CollectionImageSchema);

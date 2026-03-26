@@ -23,25 +23,7 @@ const deliveryAgentSchema = new mongoose.Schema({
   is_verified: { type: Boolean, default: false },
   otp_method: { type: String, enum: ['email', 'mobile'], default: null },
   refresh_token: { type: String }
-}, {
-  timestamps: true,
-  toJSON: {
-    transform: (doc, ret) => {
-      if (ret.avatar && !ret.avatar.startsWith('http')) {
-        ret.avatar = `${process.env.BASE_URL_TWO}uploads/${ret.avatar}`;
-      }
-      return ret;
-    }
-  },
-  toObject: {
-    transform: (doc, ret) => {
-      if (ret.avatar && !ret.avatar.startsWith('http')) {
-        ret.avatar = `${process.env.BASE_URL_TWO}uploads/${ret.avatar}`;
-      }
-      return ret;
-    }
-  }
-});
+}, { timestamps: true });
 
 // Hash password before saving
 deliveryAgentSchema.pre('save', async function (next) {
