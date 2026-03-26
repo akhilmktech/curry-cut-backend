@@ -199,13 +199,20 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
 
 // --- Agent App Controllers ---
 
-// Agent Login
 exports.loginAgent = catchAsync(async (req, res, next) => {
-    const { email, password } = req.body;
-    const agent = await DeliveryAgent.findOne({ email });
-    if (!agent || !(await agent.comparePassword(password))) {
-        return res.status(401).json({ status: 'error', message: 'Invalid email or password' });
+    const { email, mobile, password } = req.body;
+
+    if (!email && !mobile) {
+        return res.status(400).json({ status: 'error', message: 'Email or mobile number is required' });
     }
+
+    const query = email ? { email } : { mobile };
+    const agent = await DeliveryAgent.findOne(query);
+
+    if (!agent || !(await agent.comparePassword(password))) {
+        return res.status(401).json({ status: 'error', message: 'Invalid credentials' });
+    }
+
 
     if (agent.status === 'inactive') {
         return res.status(403).json({ status: 'error', message: 'Your account is inactive. Please contact admin.' });

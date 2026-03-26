@@ -7,20 +7,19 @@ const { InternalServerError, EmptyRequestBodyError } = require('../utils/customE
 
 exports.login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
+ 
+   // Populate role and nested permissions
+   const user = await User.findOne({ email })
+     .populate({
+       path: 'role',
+       populate: {
+         path: 'permissions',
+         select: 'permission_name page_url group _id' 
+       }
+   });
+ 
+   if (!user) throw new InternalServerError("Invalid credentials");
 
-  // Populate role and nested permissions
-  const user = await User.findOne({ email })
-    .populate({
-      path: 'role',
-      populate: {
-        path: 'permissions',
-        select: 'permission_name page_url group _id' 
-      }
-  });
-
-  if (!user) throw new InternalServerError("Invalid credentials");
-
-  const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) throw new InternalServerError("Invalid credentials");
 
   const accessToken = generateAccessToken(user);
