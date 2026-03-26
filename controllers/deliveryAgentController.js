@@ -82,6 +82,7 @@ exports.getAgents = catchAsync(async (req, res, next) => {
 
 // Update Agent
 exports.updateAgent = catchAsync(async (req, res, next) => {
+    console.log('Update Agent Request:', { body: req.body, file: req.file });
     try {
         if (req.body.status) req.body.status = req.body.status.toLowerCase();
 
@@ -253,6 +254,7 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 
 // Update Profile (Agent App)
 exports.updateProfile = catchAsync(async (req, res, next) => {
+    console.log('Update Profile Request:', { body: req.body, file: req.file });
     const agent = await DeliveryAgent.findById(req.user.id);
     if (!agent) throw new NotFoundError('Agent not found');
 
@@ -291,6 +293,7 @@ exports.updateProfile = catchAsync(async (req, res, next) => {
     }
 
     await agent.save();
+    console.log('Profile saved successfully, avatar:', agent.avatar);
 
     res.status(200).json({
         status: 'success',
