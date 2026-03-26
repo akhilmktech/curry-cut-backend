@@ -445,7 +445,7 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
 });
 // Get Profile Data (Agent App)
 exports.getProfile = catchAsync(async (req, res, next) => {
-    const agent = await DeliveryAgent.findById(req.user.id).lean();
+    const agent = await DeliveryAgent.findById(req.user.id);
     if (!agent) throw new NotFoundError('Agent not found');
 
     const total_delivered_count = await Order.countDocuments({ 
@@ -456,7 +456,7 @@ exports.getProfile = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         data: {
-            ...agent,
+            ...agent.toJSON(),
             total_delivered_count
         }
     });
@@ -469,7 +469,7 @@ exports.getAgentDetails = catchAsync(async (req, res, next) => {
     const { id } = req.params;
     const { status, page = 1, limit = 10 } = req.query;
 
-    const agent = await DeliveryAgent.findById(id).lean();
+    const agent = await DeliveryAgent.findById(id);
     if (!agent) throw new NotFoundError('Agent not found');
 
     // Fetch stats
@@ -509,7 +509,7 @@ exports.getAgentDetails = catchAsync(async (req, res, next) => {
     res.status(200).json({
         status: 'success',
         data: {
-            agent,
+            agent: agent.toJSON(),
             stats: statsMap,
             orders,
             pagination: {
