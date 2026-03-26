@@ -45,6 +45,19 @@ app.use("/api/V1/products", productRoutes);
 app.use("/api/V1/common",commonRoutes)
 app.use('/api/V1/collections',collectionRoutes)
 
+app.get('/api/V1/debug-paths', (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const uploadsPath = path.join(__dirname, 'uploads');
+    res.json({
+        __dirname,
+        cwd: process.cwd(),
+        uploads_exists: fs.existsSync(uploadsPath),
+        uploads_contents: fs.existsSync(uploadsPath) ? fs.readdirSync(uploadsPath) : null,
+        agents_contents: fs.existsSync(path.join(uploadsPath, 'agents')) ? fs.readdirSync(path.join(uploadsPath, 'agents')) : null
+    });
+});
+
 // swagger documentation 
 swaggerDocs(app);
 // handle the error when none of the above routes works
