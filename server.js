@@ -39,32 +39,18 @@ app.use('/api/V1/roles', roleRoutes);
 app.use('/api/V1/admin/delivery-agent', require('./routes/admin/deliveryAgentRoutes'));
 app.use('/api/V1/agent/delivery-agent', require('./routes/agent/deliveryAgentRoutes'));
 app.use('/api/V1/users', userRoutes);
-app.use('/api/V1/profile',profileRoutes);
-app.use('/api/V1/orders',orderRoutes)
+app.use('/api/V1/profile', profileRoutes);
+app.use('/api/V1/orders', orderRoutes)
 app.use("/api/V1/products", productRoutes);
-app.use("/api/V1/common",commonRoutes)
-app.use('/api/V1/collections',collectionRoutes)
-
-app.get('/api/V1/debug-paths', (req, res) => {
-    const fs = require('fs');
-    const path = require('path');
-    const uploadsPath = path.join(__dirname, 'uploads');
-    res.json({
-        __dirname,
-        cwd: process.cwd(),
-        uploads_exists: fs.existsSync(uploadsPath),
-        uploads_contents: fs.existsSync(uploadsPath) ? fs.readdirSync(uploadsPath) : null,
-        agents_contents: fs.existsSync(path.join(uploadsPath, 'agents')) ? fs.readdirSync(path.join(uploadsPath, 'agents')) : null
-    });
-});
+app.use("/api/V1/common", commonRoutes)
+app.use('/api/V1/collections', collectionRoutes)
 
 // swagger documentation 
 swaggerDocs(app);
 // handle the error when none of the above routes works
 app.use(errorHandler);
 
-
-app.listen(process.env.PORT, () =>{
+app.listen(process.env.PORT, () => {
     console.log(clc.blueBright("────────────────────────────────────────────"));
     console.log(`${clc.green("🚀 Server Started Successfully")}`);
     console.log(`${clc.cyan("🌐 Environment")} : ${clc.whiteBright(process.env.NODE_ENV)}`);
