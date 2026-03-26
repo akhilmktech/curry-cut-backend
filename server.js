@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 dotenv.config();
 const connectDB = require('./config/db');
 // routes imports
@@ -29,7 +30,23 @@ app.use(cors());
 // Increase limit to 50mb or more, as needed
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+const uploadsPath = path.resolve(__dirname, 'uploads');
+console.log('Static serving directory:', uploadsPath);
+app.use("/uploads", express.static(uploadsPath));
+
+// Diagnostics route to check uploads folder
+app.get('/api/V1/debug-uploads', (req, res) => {
+    const agentsPath = path.join(uploadsPath, 'agents');
+    try {
+        if (!fs.existsSync(agentsPath)) {
+            return res.json({ status: 'error', message: 'Agents folder does not exist', path: agentsPath });
+        }
+        const files = fs.readdirSync(agentsPath);
+        res.json({ status: 'success', path: agentsPath, files });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
 app.use(morgan("dev"));
 app.use('/api/V1/auth', authRoutes);
 app.use("/api/V1", uploadRoutes);

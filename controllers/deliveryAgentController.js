@@ -253,6 +253,12 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 
 // Update Profile (Agent App)
 exports.updateProfile = catchAsync(async (req, res, next) => {
+    console.log('Update Profile - Full Debug:', {
+      headers: req.headers,
+      body: req.body,
+      file: req.file,
+      allFiles: req.files
+    });
     const agent = await DeliveryAgent.findById(req.user.id);
     if (!agent) throw new NotFoundError('Agent not found');
 
@@ -472,6 +478,7 @@ const formatAgent = (req, agent) => {
 // Get Profile Data (Agent App)
 exports.getProfile = catchAsync(async (req, res, next) => {
     const agent = await DeliveryAgent.findById(req.user.id);
+    console.log('Get Profile Debug - Avatar from DB:', agent?.avatar);
     if (!agent) throw new NotFoundError('Agent not found');
 
     const total_delivered_count = await Order.countDocuments({ 
