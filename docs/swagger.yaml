@@ -5,10 +5,10 @@ info:
   description: API documentation for Curry Cut Admin and Delivery Agent App.
 
 servers:
-  - url: https://curry-cut-backend-1.onrender.com
-    description: Production server
   - url: http://localhost:3002
     description: Development server
+  - url: https://curry-cut-backend-1.onrender.com
+    description: Production server
 
 components:
   securitySchemes:

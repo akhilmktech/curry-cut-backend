@@ -4,10 +4,24 @@ const getFullUrl = (req, relativePath) => {
   
   // Use dynamic host if BASE_URL_TWO looks like a production URL and we are likely in development
   const envBaseUrl = process.env.BASE_URL_TWO;
+  const host = req.get('host');
   const isProductionUrl = envBaseUrl && (envBaseUrl.includes('onrender.com') || envBaseUrl.includes('curry-cut.com'));
-  const isLocalHost = req.get('host').includes('localhost') || req.get('host').includes('127.0.0.1');
+  const isLocalHost = host.includes('localhost') || 
+                     host.includes('127.0.0.1') || 
+                     host.startsWith('192.168.') || 
+                     host.startsWith('10.') || 
+                     host.startsWith('172.');
   
-  const baseUrl = (isProductionUrl && !isLocalHost) ? envBaseUrl : `${req.protocol}://${req.get('host')}/`;
+  const baseUrl = (isProductionUrl && !isLocalHost) ? envBaseUrl : `${req.protocol}://${host}/`;
+  
+  console.log('Full URL Debug:', {
+    envBaseUrl,
+    host,
+    isProductionUrl,
+    isLocalHost,
+    chosenBaseUrl: baseUrl,
+    relativePath
+  });
   
   // Ensure the relative path is prefixed with uploads/ if it's not already
   const normalizedPath = relativePath.startsWith('uploads/') ? relativePath : `uploads/${relativePath}`;
