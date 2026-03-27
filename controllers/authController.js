@@ -18,9 +18,10 @@ exports.login = catchAsync(async (req, res, next) => {
        }
    });
  
-   if (!user) throw new InternalServerError("Invalid credentials");
+    if (!user) throw new InternalServerError("Invalid credentials");
 
-  if (!isMatch) throw new InternalServerError("Invalid credentials");
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new InternalServerError("Invalid credentials");
 
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);

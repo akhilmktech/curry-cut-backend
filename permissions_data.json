@@ -1,0 +1,54 @@
+{
+  "Dashboard": [
+    "Dashboard"
+  ],
+  "Delivery Agent": [
+    "Delivery Agent List",
+    "Delivery Agent Add",
+    "Delivery Agent Delete",
+    "Delivery Agent Update",
+    "Delivery Agent Password Update"
+  ],
+  "Mobile": [
+    "Home Layout View",
+    "Home Layout Edit",
+    "Home Layout Delete",
+    "Collection Image Delete",
+    "Collection Image Add",
+    "Collection Image Edit",
+    "Collection Image view",
+    "Home Layout Add"
+  ],
+  "Orders": [
+    "Vendor Filter",
+    "Order Details",
+    "Order List",
+    "Order fulfill"
+  ],
+  "Products": [
+    "Product Edit",
+    "Product Add",
+    "Product List",
+    "Product Delete"
+  ],
+  "Roles": [
+    "Delete Role",
+    "Edit Role",
+    "Add Role",
+    "List Role"
+  ],
+  "Test": [
+    "test permission 2",
+    "test permission",
+    "test permission 3"
+  ],
+  "Users": [
+    "User Edit",
+    "User Delete",
+    "User Add",
+    "User List"
+  ],
+  "dd": [
+    "test permission 4"
+  ]
+}
