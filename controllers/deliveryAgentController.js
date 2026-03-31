@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const DeliveryAgent = require('../models/DeliveryAgent');
 const Order = require('../models/Order');
+const Notification = require('../models/Notification');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, InternalServerError } = require('../utils/customErrors');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateTokens');
@@ -8,6 +9,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 const getFullUrl = require('../utils/fullUrl');
+const sendNotification = require('../utils/sendNotification');
 
 // --- Admin Controllers ---
 
@@ -87,7 +89,7 @@ exports.updateAgent = catchAsync(async (req, res, next) => {
 
         // Remove password from update body to prevent inadvertent password changes
         delete req.body.password;
-        
+
         const agent = await DeliveryAgent.findById(req.params.id);
         if (!agent) throw new NotFoundError('Agent not found');
 
@@ -127,7 +129,7 @@ exports.updateAgent = catchAsync(async (req, res, next) => {
         });
 
         await agent.save();
-        
+
         res.status(200).json({
             status: 'success',
             message: 'Agent updated successfully',
@@ -193,6 +195,29 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     order.assignment_date = new Date();
     order.delivery_status = 'Pending';
     await order.save();
+
+    // Send push notification to the assigned delivery agent
+    const title = 'New Order Assigned! 🛵';
+    const message = `Order #${order.order_id} has been assigned to you. Please check your app for details.`;
+    const notificationData = { order_id: order.order_id, type: 'order_assigned', screen: 'OrderDetail' };
+
+    await sendNotification(
+        agent_id,
+        title,
+        message,
+        notificationData,
+        `com.currycut_staffapp://OrderDetail/${order.order_id}`
+    );
+    console.log("Notification sent to agent", agent_id);
+
+    // Save notification to database
+    await Notification.create({
+        agent_id,
+        title,
+        message,
+        data: notificationData,
+        is_read: false
+    });
 
     res.status(200).json({ status: 'success', message: 'Agent assigned to order successfully', data: order });
 });
@@ -261,10 +286,10 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
 // Update Profile (Agent App)
 exports.updateProfile = catchAsync(async (req, res, next) => {
     console.log('Update Profile - Full Debug:', {
-      headers: req.headers,
-      body: req.body,
-      file: req.file,
-      allFiles: req.files
+        headers: req.headers,
+        body: req.body,
+        file: req.file,
+        allFiles: req.files
     });
     const agent = await DeliveryAgent.findById(req.user.id);
     if (!agent) throw new NotFoundError('Agent not found');
@@ -388,16 +413,16 @@ exports.getDeliveryStats = catchAsync(async (req, res, next) => {
 
     const pending_count = await Order.countDocuments({ assigned_agent: agentId, delivery_status: 'Pending' });
     const delivered_count = await Order.countDocuments({ assigned_agent: agentId, delivery_status: 'Delivered' });
-    
+
     // Any order that is currently "Picked Up" by this agent
-    const current_order = await Order.findOne({ 
-        assigned_agent: agentId, 
-        delivery_status: 'Picked Up' 
+    const current_order = await Order.findOne({
+        assigned_agent: agentId,
+        delivery_status: 'Picked Up'
     });
 
-    const recent_activity = await Order.find({ 
-        assigned_agent: agentId, 
-        delivery_status: 'Delivered' 
+    const recent_activity = await Order.find({
+        assigned_agent: agentId,
+        delivery_status: 'Delivered'
     })
         .sort({ delivered_at: -1 })
         .limit(5)
@@ -432,12 +457,12 @@ exports.getAssignedOrders = catchAsync(async (req, res, next) => {
 
     const total = await Order.countDocuments(query);
 
-    res.status(200).json({ 
-        status: 'success', 
+    res.status(200).json({
+        status: 'success',
         total,
         page,
         limit,
-        data: orders 
+        data: orders
     });
 });
 
@@ -488,9 +513,9 @@ exports.getProfile = catchAsync(async (req, res, next) => {
     console.log('Get Profile Debug - Avatar from DB:', agent?.avatar);
     if (!agent) throw new NotFoundError('Agent not found');
 
-    const total_delivered_count = await Order.countDocuments({ 
-        assigned_agent: req.user.id, 
-        delivery_status: 'Delivered' 
+    const total_delivered_count = await Order.countDocuments({
+        assigned_agent: req.user.id,
+        delivery_status: 'Delivered'
     });
 
     res.status(200).json({
@@ -515,11 +540,11 @@ exports.getAgentDetails = catchAsync(async (req, res, next) => {
     // Fetch stats
     const stats = await Order.aggregate([
         { $match: { assigned_agent: new mongoose.Types.ObjectId(id) } },
-        { 
-            $group: { 
-                _id: "$delivery_status", 
-                count: { $sum: 1 } 
-            } 
+        {
+            $group: {
+                _id: "$delivery_status",
+                count: { $sum: 1 }
+            }
         }
     ]);
 

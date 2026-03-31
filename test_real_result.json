@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "response": {
+    "id": "62bbbd77-7edb-4464-8433-e135edc13a4a",
+    "external_id": null,
+    "errors": {
+      "invalid_aliases": {
+        "external_id": [
+          "69bcd84b3da542e8a0d37e3c"
+        ]
+      }
+    }
+  }
+}

@@ -555,6 +555,57 @@ paths:
                       avatar: { type: string, nullable: true }
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
+  
+  /api/V1/agent/notifications:
+    get:
+      tags:
+        - Delivery Agent (App)
+      summary: Get all notifications for the delivery agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 15 }
+      responses:
+        '200':
+          description: Notifications fetched successfully
+
+  /api/V1/agent/notifications/unread-count:
+    get:
+      tags:
+        - Delivery Agent (App)
+      summary: Get the unread notification count
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Unread count fetched successfully
+
+  /api/V1/agent/notifications/read:
+    patch:
+      tags:
+        - Delivery Agent (App)
+      summary: Mark notifications as read
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notification_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of notification IDs. If omitted, marks all as read.
+      responses:
+        '200':
+          description: Notifications marked as read successfully
 
   # --- Admin Management APIs ---
   /api/V1/users:

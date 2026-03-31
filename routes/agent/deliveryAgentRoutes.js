@@ -3,6 +3,7 @@ const router = express.Router();
 const deliveryAgentController = require('../../controllers/deliveryAgentController');
 const { authenticate } = require('../../middleware/authMiddleware');
 const { uploadAgentAvatar } = require('../../middleware/uploadMiddleware');
+const notificationController = require('../../controllers/notificationController');
 
 router.post('/login', deliveryAgentController.loginAgent);
 router.post('/refresh-token', deliveryAgentController.refreshToken);
@@ -18,5 +19,10 @@ router.put('/update-delivery-status/:id', authenticate, deliveryAgentController.
 router.put('/update-profile', authenticate, uploadAgentAvatar.single('avatar'), deliveryAgentController.updateProfile);
 router.put('/change-password', authenticate, deliveryAgentController.changePasswordAgent);
 router.get('/profile', authenticate, deliveryAgentController.getProfile);
+
+// Notifications
+router.get('/notifications', authenticate, notificationController.getNotifications);
+router.get('/notifications/unread-count', authenticate, notificationController.getUnreadCount);
+router.patch('/notifications/read', authenticate, notificationController.markAsRead);
 
 module.exports = router;
