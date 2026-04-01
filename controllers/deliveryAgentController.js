@@ -199,14 +199,16 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     // Send push notification to the assigned delivery agent
     const title = 'New Order Assigned! 🛵';
     const message = `Order #${order.order_id} has been assigned to you. Please check your app for details.`;
-    const notificationData = { order_id: order.order_id, type: 'order_assigned', screen: 'OrderDetail' };
+    
+    // Pass the MongoDB _id so the app's getOrderDetail endpoint functions correctly
+    const notificationData = { id: order._id.toString(), order_id: order.order_id, type: 'order_assigned', screen: 'OrderDetail' };
 
     await sendNotification(
         agent_id,
         title,
         message,
         notificationData,
-        `com.currycut_staffapp://OrderDetail/${order.order_id}`
+        `com.currycut_staffapp://OrderDetail/${order._id.toString()}`
     );
     console.log("Notification sent to agent", agent_id);
 
