@@ -556,7 +556,7 @@ paths:
                       createdAt: { type: string, format: date-time }
                       updatedAt: { type: string, format: date-time }
   
-  /api/V1/agent/notifications:
+  /api/V1/agent/delivery-agent/notifications:
     get:
       tags:
         - Delivery Agent (App)
@@ -574,7 +574,7 @@ paths:
         '200':
           description: Notifications fetched successfully
 
-  /api/V1/agent/notifications/unread-count:
+  /api/V1/agent/delivery-agent/notifications/unread-count:
     get:
       tags:
         - Delivery Agent (App)
