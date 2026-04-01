@@ -585,7 +585,7 @@ paths:
         '200':
           description: Unread count fetched successfully
 
-  /api/V1/agent/notifications/read:
+  /api/V1/agent/delivery-agent/notifications/read:
     patch:
       tags:
         - Delivery Agent (App)
