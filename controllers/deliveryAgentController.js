@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const DeliveryAgent = require('../models/DeliveryAgent');
 const Order = require('../models/Order');
 const Notification = require('../models/Notification');
+const OrderTimeline = require('../models/OrderTimeline');
 const catchAsync = require('../utils/catchAsync');
 const { NotFoundError, InternalServerError } = require('../utils/customErrors');
 const { generateAccessToken, generateRefreshToken } = require('../utils/generateTokens');
@@ -219,6 +220,16 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
         message,
         data: notificationData,
         is_read: false
+    });
+
+    // Create timeline entry
+    const isReassigned = !!order.assigned_agent;
+    await OrderTimeline.create({
+        order_id: order_id,
+        action: isReassigned ? 'Reassigned' : 'Assigned',
+        message: isReassigned 
+            ? `Order reassigned to agent: ${agent.name}`
+            : `Order assigned to agent: ${agent.name}`
     });
 
     res.status(200).json({ status: 'success', message: 'Agent assigned to order successfully', data: order });
@@ -490,12 +501,53 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
         return res.status(403).json({ status: 'error', message: 'Access denied' });
     }
 
-    order.delivery_status = status;
-    if (status === 'Picked Up') order.picked_up_at = new Date();
-    if (status === 'Delivered') order.delivered_at = new Date();
+    order.delivery_status = status; // Keeping for backward compatibility but focusing on fulfillment_status
+    if (status === 'Picked Up') {
+        order.picked_up_at = new Date();
+        order.fulfillment_status = 'scheduled';
+    }
+    if (status === 'Delivered') {
+        order.delivered_at = new Date();
+        order.fulfillment_status = 'fulfilled';
+
+        // SYNC TO SHOPIFY: Create Fulfillment
+        try {
+            const mutation = `
+                mutation FulfillOrder {
+                    fulfillmentCreateV2(fulfillment: {
+                        notifyCustomer: true,
+                        lineItemsByFulfillmentOrder: [
+                            {
+                                fulfillmentOrderId: "gid://shopify/FulfillmentOrder/${order.fulfillment_id}"
+                            }
+                        ]
+                    }) {
+                        fulfillment { id status }
+                        userErrors { message }
+                    }
+                }
+            `;
+            await axios.post(process.env.SHOPIFY_ADMIN_API, { query: mutation }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+                }
+            });
+        } catch (err) {
+            console.error("Shopify Sync Error (Delivered):", err.response?.data || err.message);
+        }
+    }
     if (status === 'Cancelled') order.cancelled_at = new Date();
 
     await order.save();
+
+    // Create timeline entry
+    await OrderTimeline.create({
+        order_id: order.order_id,
+        action: status === 'Picked Up' ? 'Picked Up' : (status === 'Delivered' ? 'Delivered' : status),
+        message: `Order status updated to ${status} (Synced to Shopify)`
+    });
+
 
     res.status(200).json({ status: 'success', message: `Order status updated to ${status}`, data: order });
 });
@@ -614,7 +666,7 @@ exports.changePasswordAgent = catchAsync(async (req, res, next) => {
     // Check if old password is correct
     const isMatch = await agent.comparePassword(oldPassword);
     if (!isMatch) {
-        return res.status(401).json({
+        return res.status(404).json({
             status: 'error',
             message: 'Incorrect old password'
         });

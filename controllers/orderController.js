@@ -14,7 +14,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const limit = parseInt(req.query.limit) || 10;
    const skip = page * limit;
    const user = await User.findById(req.user?.id)?.populate('role');
-   const { search, financial_status,sortBy,vendor_name} = req.query;
+   const { search, financial_status, sortBy, from_date, to_date, assigned_status, order_status } = req.query;
 
    if(user?.role?.role_name?.toLowerCase() == "vendor"){
       const vendorName = user.name;
@@ -47,15 +47,47 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       ];
    }
 
-   if (vendor_name) {
-      filter['line_items'] = {
-         $elemMatch: { vendor_name}
-      };
-   }
-
    // Financial status filter
    if (financial_status) {
       filter.financial_status = financial_status;
+   }
+
+   // Date Range Filter
+   if (from_date || to_date) {
+      filter.created_at = {};
+      if (from_date) {
+         filter.created_at.$gte = new Date(from_date);
+      }
+      if (to_date) {
+         // Extend to end of the day or use accurate to_date
+         const endDate = new Date(to_date);
+         endDate.setHours(23, 59, 59, 999);
+         filter.created_at.$lte = endDate;
+      }
+   }
+
+   // Assigned Status Filter ('assigned' or 'unassigned')
+   if (assigned_status === 'assigned') {
+      filter.assigned_agent = { $ne: null };
+   } else if (assigned_status === 'unassigned') {
+      filter.assigned_agent = null;
+   }
+
+   // Order Status Filter (Mapping Pickup/Delivered/Pending to fulfillment_status)
+   if (order_status) {
+      if (order_status === 'Pickup') {
+         filter.fulfillment_status = 'scheduled';
+      } else if (order_status === 'Delivered') {
+         filter.fulfillment_status = 'fulfilled';
+      } else if (order_status === 'Pending') {
+         filter.$or = [
+            { fulfillment_status: null },
+            { fulfillment_status: 'unfulfilled' },
+            { fulfillment_status: { $exists: false } }
+         ];
+      } else if (order_status === 'Cancelled') {
+         filter.cancelled_at = { $ne: null };
+      }
    }
 
    // Fetch matching orders
@@ -67,15 +99,8 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 
    const total = await Order.countDocuments(filter);
 
-   //  Filter out unrelated line_items if vendor_id is used
-   const filteredOrders = orders.map(order => {
-      if (vendor_name) {
-         order.line_items = order.line_items.filter(item => item.vendor_name === vendor_name);
-         // console.log("orderlineitems:",order.line_items)
-      }
-      return order;
-   });
-   // console.log("filteredOrders:",filteredOrders)
+   // Remove line items filtering logic since vendor_name is removed
+   const filteredOrders = orders;
 
    // Send response
    res.status(200).json({
@@ -98,6 +123,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
    if (orderExists) {
       orderExists.financial_status = order?.financial_status;
       orderExists.fulfillment_status = order?.fulfillment_status;
+      // If Shopify indicates a fulfillment order is scheduled, prioritize that
+      if (order?.fulfillment_orders?.[0]?.status === 'scheduled') {
+         orderExists.fulfillment_status = 'scheduled';
+      }
       orderExists.line_items = orderExists?.line_items?.map(item => ({
          ...item,
          fulfillment_status: order?.line_items?.find(lineItem => item?.id == lineItem?.id)?.fulfillment_status
@@ -186,7 +215,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       phone: order?.phone || "",
       currency: order?.currency || "",
       financial_status: order?.financial_status || "",
-      fulfillment_status: order?.fulfillment_status || "",
+      fulfillment_status: (fulfillmentOrder?.status === 'scheduled') ? 'scheduled' : (order?.fulfillment_status || ""),
       total_discounts: order?.total_discounts || null,
       total_price: order?.total_price || null,
       total_tax: order?.total_tax || null,
@@ -356,11 +385,12 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
       const order = await Order.findOne({ order_id: req.body.order_id });
       order.fulfillment_status = "Fulfilled"
       order.line_items = order.line_items?.map(item => ({ ...item, fulfillment_status: "Fulfilled" }));
+      order.delivery_status = "Delivered"; // Ensure delivery_status is also updated
       const data = await order.save();
       await OrderTimeline.create({
          order_id: order.order_id,
-         action: 'Fulfilled',
-         message: 'Order Fulfilled'
+         action: 'Delivered',
+         message: 'Order Delivered (Fulfilled)'
       });
       res.status(201).json({
          status: "success",
