@@ -193,6 +193,7 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     const agent = await DeliveryAgent.findById(agent_id);
     if (!agent) throw new NotFoundError('Agent not found');
 
+    const previousAgent = order.assigned_agent;
     order.assigned_agent = agent_id;
     order.assignment_date = new Date();
     order.delivery_status = 'Pending';
@@ -224,7 +225,7 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     });
 
     // Create timeline entry
-    const isReassigned = !!order.assigned_agent;
+    const isReassigned = !!previousAgent;
     await OrderTimeline.create({
         order_id: order_id,
         action: isReassigned ? 'Reassigned' : 'Assigned',
