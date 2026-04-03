@@ -209,11 +209,25 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
    const fulfillmentOrder = fulfillmentRes?.data?.fulfillment_orders?.[0];
 
-   const metafieldsPerProduct = {};
+   const productDataMap = {};
    await Promise.all(order.line_items.map(async item => {
       if (!item?.product_id) return;
    
       try {
+         // Fetch Product Details (for Image)
+         const productRes = await axios.get(
+            `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${item.product_id}.json`,
+            {
+               headers: {
+                  'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+               }
+            }
+         );
+
+         const product = productRes?.data?.product;
+         const primaryImage = product?.image?.src || (product?.images?.length > 0 ? product.images[0].src : null);
+
+         // Fetch Metafields (for Vendor ID/Name)
          const metafieldRes = await axios.get(
             `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${item.product_id}/metafields.json`,
             {
@@ -222,28 +236,28 @@ exports.createOrder = catchAsync(async (req, res, next) => {
                }
             }
          );
-
-         console.log(metafieldRes?.data?.metafields,"metafields-ref")
    
          const vendorIdMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendorid");
          const vendorMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendor");
    
-         metafieldsPerProduct[item.product_id] = {
+         productDataMap[item.product_id] = {
             vendor_id: vendorIdMeta?.value || null,
-            vendor_name: vendorMeta?.value || null
+            vendor_name: vendorMeta?.value || null,
+            image: primaryImage
          };
       } catch (err) {
-         console.error(`Error fetching metafields for product ${item.product_id}:`, err.message);
-         metafieldsPerProduct[item.product_id] = {
+         console.error(`Error fetching product data for ${item.product_id}:`, err.message);
+         productDataMap[item.product_id] = {
             vendor_id: null,
-            vendor_name: null
+            vendor_name: null,
+            image: null
          };
       }
    }));
    
    // 🛠 Build final data
    const lineItems = order?.line_items?.map(item => {
-      const meta = metafieldsPerProduct[item.product_id] || {};
+      const productData = productDataMap[item.product_id] || {};
       const fulfillmentLineItem = fulfillmentOrder?.line_items?.find(line => line.line_item_id === item.id);
       return {
          id: item?.id,
@@ -259,7 +273,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          deleted_date: null,
          fulfillment_status: item?.fulfillment_status || "",
          fulfillment_item_id: fulfillmentLineItem?.id || "",
-         vendor_id: meta.vendor_id,
+         vendor_id: productData.vendor_id,
+         image: productData.image
       };
    });
 

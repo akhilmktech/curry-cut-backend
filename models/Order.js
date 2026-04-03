@@ -14,7 +14,8 @@ const lineItemSchema = new mongoose.Schema({
   fulfillment_item_id:{type:String},
   fulfillment_status: {type:String},
   deleted_date:{type:String},
-  vendor_id: { type: String }
+  vendor_id: { type: String },
+  image: { type: String }
 }, { _id: true });
 
 const orderSchema = new mongoose.Schema({

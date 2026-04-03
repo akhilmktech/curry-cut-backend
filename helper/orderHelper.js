@@ -121,26 +121,39 @@ export const handleOrderEdit = async (orderEditPayload) => {
 
       if (!newLineItem) continue;
 
-      //  Get product metafields
+      //  Get product details and metafields
       let vendorId = null;
       let vendorName = newLineItem.vendor || null;
+      let primaryImage = null;
 
-      // try {
-      //   const metafieldResp = await axios.get(
-      //     `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}/metafields.json`,
-      //     {
-      //       headers: {
-      //         'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-      //       }
-      //     }
-      //   );
+      try {
+        // Fetch Product Details (for Image)
+        const productRes = await axios.get(
+          `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+            }
+          }
+        );
+        const product = productRes?.data?.product;
+        primaryImage = product?.image?.src || (product?.images?.length > 0 ? product.images[0].src : null);
 
-      //   const metafields = metafieldResp?.data?.metafields || [];
-      //   vendorId = metafields.find(mf => mf.key === 'vendorid')?.value || null;
-      //   vendorName = metafields.find(mf => mf.key === 'vendor')?.value || vendorName;
-      // } catch (err) {
-      //   console.warn(`Failed to fetch metafields for product ${newLineItem.product_id}`, err?.response?.data || err.message);
-      // }
+        const metafieldResp = await axios.get(
+          `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}/metafields.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+            }
+          }
+        );
+
+        const metafields = metafieldResp?.data?.metafields || [];
+        vendorId = metafields.find(mf => mf.key === 'vendorid')?.value || null;
+        vendorName = metafields.find(mf => mf.key === 'vendor')?.value || vendorName;
+      } catch (err) {
+        console.warn(`Failed to fetch product data for product ${newLineItem.product_id}`, err?.response?.data || err.message);
+      }
 
       const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
 
@@ -160,7 +173,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
           fulfillment_item_id: fulfillment_item_id?.toString() || null,
           fulfillment_status: newLineItem?.fulfillment_status || "",
           vendor_name: vendorName,
-          vendor_id: vendorId
+          vendor_id: vendorId,
+          image: primaryImage
         });
       } else {
         const index = order.line_items.findIndex(
@@ -182,7 +196,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
             deleted_date: existsInDB?.deleted_date || null,
             fulfillment_status: newLineItem?.fulfillment_status || "",
             vendor_name: vendorName,
-            vendor_id: vendorId
+            vendor_id: vendorId,
+            image: primaryImage
           };
         }
       }
