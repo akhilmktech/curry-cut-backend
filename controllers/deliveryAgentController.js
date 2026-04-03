@@ -498,8 +498,29 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
     const order = await Order.findById(req.params.id);
 
     if (!order) throw new NotFoundError('Order not found');
-    if (order.assigned_agent?.toString() !== req.user.id) {
-        return res.status(403).json({ status: 'error', message: 'Access denied' });
+
+    // Only the assigned agent can update the order status. This also handles unassigned orders.
+    if (!order.assigned_agent || order.assigned_agent.toString() !== req.user.id) {
+        return res.status(403).json({ 
+            status: 'error', 
+            message: 'Access denied: You are not assigned to this order or the order is unassigned' 
+        });
+    }
+
+    // Once an order is Delivered, the status cannot be changed further via this API.
+    if (order.delivery_status === 'Delivered') {
+        return res.status(400).json({ 
+            status: 'error', 
+            message: 'Order is already marked as Delivered and cannot be updated' 
+        });
+    }
+
+    // Once an order is Picked Up, it cannot be marked as Pending again.
+    if (order.delivery_status === 'Picked Up' && status === 'Pending') {
+        return res.status(400).json({ 
+            status: 'error', 
+            message: 'Order has already been Picked Up and cannot be marked as Pending' 
+        });
     }
 
     order.delivery_status = status; // Keeping for backward compatibility but focusing on fulfillment_status
