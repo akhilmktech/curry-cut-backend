@@ -9,6 +9,52 @@ const OrderTimeline = require('../models/OrderTimeline');
 const User = require('../models/User');
 
 // get all orders
+exports.getOrdersByCustomer = catchAsync(async (req, res, next) => {
+   const customerId = Number(req.params.customerId);
+   if (isNaN(customerId)) {
+      return res.status(400).json({ status: 'fail', message: 'Invalid customer ID' });
+   }
+
+   const orders = await Order.find({ "customer.id": customerId }).sort({ created_at: -1 }).lean();
+
+   res.status(200).json({
+      status: 'success',
+      results: orders.length,
+      data: orders,
+   });
+});
+
+exports.getOrderDetailByCustomer = catchAsync(async (req, res, next) => {
+   const { customerId, orderId } = req.params;
+   const cId = Number(customerId);
+
+   if (isNaN(cId)) {
+      return res.status(400).json({ status: 'fail', message: 'Invalid customer ID' });
+   }
+
+   const order = await Order.findOne({
+      "customer.id": cId,
+      order_id: orderId
+   }).populate('assigned_agent').lean();
+
+   if (!order) {
+      return next(new NotFoundError("Order not found or access denied"));
+   }
+
+   const removedItems = await RemovedLineItem.find({ order_id: order.order_id }).lean();
+   const timeline = await OrderTimeline.find({ order_id: order.order_id }).sort({ timestamp: -1 }).lean();
+
+   res.status(200).json({
+      status: "success",
+      message: "Order details fetched successfully",
+      data: {
+         ...order,
+         removed_line_items: removedItems,
+         timeline,
+      }
+   });
+});
+
 exports.getOrders = catchAsync(async (req, res, next) => {
    const page = parseInt(req.query.page) || 0;
    const limit = parseInt(req.query.limit) || 10;
