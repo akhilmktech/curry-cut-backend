@@ -144,22 +144,17 @@ export async function getRecentShopifyProducts(vendor) {
   }
 }
 
-export async function getTotalEarnings(vendorName = null) {
+export async function getTotalEarnings() {
   let filter = {
     deleted_at: { $in: [null, undefined] },
-    financial_status: "paid"
+    financial_status: { $in: ["paid", "authorized", "pending", "partially_paid"] }
   };
 
   const orders = await Order.find(filter).lean();
 
   let total = 0;
-
   orders.forEach(order => {
-    order.line_items.forEach(item => {
-      if (!vendorName || item.vendor_name === vendorName) {
-        total += Number(item.price) * Number(item.quantity);
-      }
-    });
+    total += Number(order.total_price || 0);
   });
 
   return total.toFixed(2);

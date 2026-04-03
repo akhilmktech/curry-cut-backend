@@ -679,16 +679,16 @@ export const getDashboardStats = async (req, res) => {
       vendor = user.name
     }
     // TOTAL PRODUCTS (SHOPIFY)
-    const totalProducts = await getShopifyProductsCount(vendor);
+    const totalProducts = await getShopifyProductsCount();
     const totalCustomers = await getShopifyCustomersCount();
-    // TOTAL ORDERS (ADMIN / VENDOR)
-    const totalOrders = await getTotalOrdersCount(vendor);
+    // TOTAL ORDERS (ADMIN)
+    const totalOrders = await getTotalOrdersCount();
     // RECENT 5 ORDERS
-    const recentOrders = await getRecentOrders(vendor);
-    // TOTAL EARNINGS (PAID ORDERS)
-    const totalEarnings = await getTotalEarnings(vendor);
+    const recentOrders = await getRecentOrders();
+    // TOTAL EARNINGS
+    const totalEarnings = await getTotalEarnings();
     // RECENT 5 PRODUCTS (SHOPIFY)
-    const recentProducts = await getRecentShopifyProducts(vendor);
+    const recentProducts = await getRecentShopifyProducts();
 
     // Define all possible statuses
     const ORDER_STATUSES = ["paid", "unpaid", "pending", "refunded"];
@@ -696,8 +696,7 @@ export const getDashboardStats = async (req, res) => {
     const orderStatusAggregation = await Order.aggregate([
       {
         $match: {
-          deleted_at: { $in: [null, undefined] },
-          ...(vendor ? { "line_items.vendor_name": vendor } : {})
+          deleted_at: { $in: [null, undefined] }
         }
       },
       {
