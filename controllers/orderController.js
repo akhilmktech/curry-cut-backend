@@ -178,141 +178,127 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
-   const orderExists = await Order?.findOne({ order_id: req.body.id ?? req.body.order_id });
+   const order_id = order.id ?? order.order_id;
+   const orderExists = await Order.findOne({ order_id });
 
-   if(orderExists?.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
+   if (orderExists?.deleted_at) return res.status(200).json({ status: "success", message: "update successfull" });
 
-   if (orderExists) {
-      orderExists.financial_status = order?.financial_status;
-      orderExists.fulfillment_status = order?.fulfillment_status;
-      // If Shopify indicates a fulfillment order is scheduled, prioritize that
-      if (order?.fulfillment_orders?.[0]?.status === 'scheduled') {
-         orderExists.fulfillment_status = 'scheduled';
-      }
-      orderExists.line_items = orderExists?.line_items?.map(item => ({
-         ...item,
-         fulfillment_status: order?.line_items?.find(lineItem => item?.id == lineItem?.id)?.fulfillment_status
-      }));
-      orderExists.currency = order?.currency;
-      orderExists.delivery_amount = Number(order?.shipping_lines?.[0]?.price || order?.total_shipping_price_set?.shop_money?.amount || 0);
-      const data = await orderExists.save();
-      return res.status(200).json({ status: "success", message: "order payment successful", data: data });
+   // 1. Fetch fulfillment orders from Shopify (needed for both create and update)
+   let fulfillmentOrder;
+   try {
+      const fulfillmentRes = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order_id}/fulfillment_orders.json`, {
+         headers: {
+            'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
+            'Content-Type': 'application/json',
+         }
+      });
+      fulfillmentOrder = fulfillmentRes?.data?.fulfillment_orders?.[0];
+   } catch (err) {
+      console.error(`Error fetching fulfillment orders for ${order_id}:`, err.message);
    }
 
-   // Fetch fulfillment orders from Shopify
-   const fulfillmentRes = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order?.id}/fulfillment_orders.json`, {
-      headers: {
-         'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
-         'Content-Type': 'application/json',
-      }
-   });
-
-   const fulfillmentOrder = fulfillmentRes?.data?.fulfillment_orders?.[0];
-
+   // 2. Fetch product data (Images + Metafields) for all line items
    const productDataMap = {};
-   await Promise.all(order.line_items.map(async item => {
-      if (!item?.product_id) return;
-   
+   const productIds = [...new Set(order.line_items.map(item => item.product_id).filter(Boolean))];
+
+   await Promise.all(productIds.map(async productId => {
       try {
-         // Fetch Product Details (for Image)
-         const productRes = await axios.get(
-            `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${item.product_id}.json`,
-            {
-               headers: {
-                  'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-               }
-            }
-         );
+         const [productRes, metafieldRes] = await Promise.all([
+            axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${productId}.json`, {
+               headers: { 'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN }
+            }),
+            axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${productId}/metafields.json`, {
+               headers: { 'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN }
+            })
+         ]);
 
          const product = productRes?.data?.product;
          const primaryImage = product?.image?.src || (product?.images?.length > 0 ? product.images[0].src : null);
+         const vendorIdMeta = metafieldRes?.data?.metafields?.find(mf => mf.key === "vendorid");
+         const vendorMeta = metafieldRes?.data?.metafields?.find(mf => mf.key === "vendor");
 
-         // Fetch Metafields (for Vendor ID/Name)
-         const metafieldRes = await axios.get(
-            `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${item.product_id}/metafields.json`,
-            {
-               headers: {
-                  'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-               }
-            }
-         );
-   
-         const vendorIdMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendorid");
-         const vendorMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendor");
-   
-         productDataMap[item.product_id] = {
+         productDataMap[productId] = {
             vendor_id: vendorIdMeta?.value || null,
             vendor_name: vendorMeta?.value || null,
             image: primaryImage
          };
       } catch (err) {
-         console.error(`Error fetching product data for ${item.product_id}:`, err.message);
-         productDataMap[item.product_id] = {
-            vendor_id: null,
-            vendor_name: null,
-            image: null
-         };
+         console.error(`Error fetching product data for ${productId}:`, err.message);
+         productDataMap[productId] = { vendor_id: null, vendor_name: null, image: null };
       }
    }));
-   
-   // 🛠 Build final data
-   const lineItems = order?.line_items?.map(item => {
+
+   // 3. Prepare line items with image and other metadata
+   const consolidatedLineItems = order.line_items.map(item => {
       const productData = productDataMap[item.product_id] || {};
       const fulfillmentLineItem = fulfillmentOrder?.line_items?.find(line => line.line_item_id === item.id);
       return {
-         id: item?.id,
-         name: item?.name || null,
-         price: item?.price || null,
-         product_id: item?.product_id || null,
-         sku: item?.sku || null,
-         total_discount: item?.total_discount || null,
-         title: item?.title || null,
-         quantity: item?.quantity || "",
-         variant_id: item?.variant_id,
-         vendor_name: item?.vendor,
+         id: item.id,
+         name: item.name || null,
+         price: item.price || null,
+         product_id: item.product_id || null,
+         sku: item.sku || null,
+         total_discount: item.total_discount || 0,
+         title: item.title || null,
+         quantity: item.quantity || 0,
+         variant_id: item.variant_id,
+         vendor_name: item.vendor || productData.vendor_name,
          deleted_date: null,
-         fulfillment_status: item?.fulfillment_status || "",
+         fulfillment_status: item.fulfillment_status || "",
          fulfillment_item_id: fulfillmentLineItem?.id || "",
          vendor_id: productData.vendor_id,
          image: productData.image
       };
    });
 
+   if (orderExists) {
+      // Update existing order
+      orderExists.financial_status = order.financial_status;
+      orderExists.fulfillment_status = (fulfillmentOrder?.status === 'scheduled') ? 'scheduled' : (order.fulfillment_status || "");
+      orderExists.currency = order.currency;
+      orderExists.delivery_amount = Number(order.shipping_lines?.[0]?.price || order.total_shipping_price_set?.shop_money?.amount || 0);
+      orderExists.line_items = consolidatedLineItems; // Refresh line items with new data/images
+      
+      const data = await orderExists.save();
+      return res.status(200).json({ status: "success", message: "order updated successfully", data });
+   }
+
+   // Create new order
    const newOrder = new Order({
-      order_id: order?.id || "",
+      order_id: order_id || "",
       fulfillment_id: fulfillmentOrder?.id || "",
       cancel_reason: null,
       cancelled_at: null,
-      created_at: order?.created_at || null,
-      deleted_at: order?.deleted_at || null,
-      email: order?.email || "",
-      name: order?.name || "",
-      order_number: order?.order_number || "",
-      payment_gate_way: order?.payment_gateway_names?.[0] || null,
-      phone: order?.phone || "",
-      currency: order?.currency || "",
-      financial_status: order?.financial_status || "",
-      fulfillment_status: (fulfillmentOrder?.status === 'scheduled') ? 'scheduled' : (order?.fulfillment_status || ""),
-      total_discounts: order?.total_discounts || null,
-      total_price: order?.total_price || null,
-      total_tax: order?.total_tax || null,
-      subtotal_price: order?.subtotal_price || null,
-      delivery_amount: Number(order?.shipping_lines?.[0]?.price || order?.total_shipping_price_set?.shop_money?.amount || 0),
-      shipping_address: order?.shipping_address || {},
-      customer: order?.customer || {},
-      line_items: lineItems
+      created_at: order.created_at || new Date(),
+      deleted_at: null,
+      email: order.email || "",
+      name: order.name || "",
+      order_number: order.order_number || "",
+      payment_gate_way: order.payment_gateway_names?.[0] || null,
+      phone: order.phone || "",
+      currency: order.currency || "",
+      financial_status: order.financial_status || "",
+      fulfillment_status: (fulfillmentOrder?.status === 'scheduled') ? 'scheduled' : (order.fulfillment_status || ""),
+      total_discounts: order.total_discounts || 0,
+      total_price: order.total_price || 0,
+      total_tax: order.total_tax || 0,
+      subtotal_price: order.subtotal_price || 0,
+      delivery_amount: Number(order.shipping_lines?.[0]?.price || order.total_shipping_price_set?.shop_money?.amount || 0),
+      shipping_address: order.shipping_address || {},
+      customer: order.customer || {},
+      line_items: consolidatedLineItems
    });
 
    await newOrder.save();
 
    await OrderTimeline.create({
-      order_id: order.id,
+      order_id: order_id,
       action: 'created',
       changes: newOrder,
       message: 'Order created'
    });
 
-   res.status(200).json({ message: "New order created" });
+   res.status(200).json({ message: "New order created", data: newOrder });
 });
 
 //get all orders by id

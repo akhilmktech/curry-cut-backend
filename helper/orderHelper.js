@@ -182,23 +182,20 @@ export const handleOrderEdit = async (orderEditPayload) => {
         );
 
         if (index !== -1) {
-          order.line_items[index] = {
-            ...order.line_items[index],
-            id: item?.id,
-            name: newLineItem.name,
-            price: parseFloat(newLineItem.price),
-            quantity: Number(existsInDB?.quantity) + Number(delta),
-            sku: newLineItem.sku,
-            product_id: newLineItem.product_id?.toString(),
-            variant_id: newLineItem.variant_id?.toString(),
-            title: newLineItem.title,
-            fulfillment_item_id: fulfillment_item_id?.toString() || null,
-            deleted_date: existsInDB?.deleted_date || null,
-            fulfillment_status: newLineItem?.fulfillment_status || "",
-            vendor_name: vendorName,
-            vendor_id: vendorId,
-            image: primaryImage
-          };
+          const li = order.line_items[index];
+          li.id = item.id;
+          li.name = newLineItem.name;
+          li.price = parseFloat(newLineItem.price);
+          li.quantity = Number(existsInDB?.quantity) + Number(delta);
+          li.sku = newLineItem.sku;
+          li.product_id = newLineItem.product_id?.toString();
+          li.variant_id = newLineItem.variant_id?.toString();
+          li.title = newLineItem.title;
+          li.fulfillment_item_id = fulfillment_item_id?.toString() || null;
+          li.fulfillment_status = newLineItem?.fulfillment_status || "";
+          li.vendor_name = vendorName;
+          li.vendor_id = vendorId;
+          li.image = primaryImage;
         }
       }
     }
