@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const getFullUrl = require('../utils/fullUrl');
 const sendNotification = require('../utils/sendNotification');
+const axios = require('axios');
 
 // --- Admin Controllers ---
 
@@ -511,30 +512,42 @@ exports.updateDeliveryStatus = catchAsync(async (req, res, next) => {
         order.fulfillment_status = 'fulfilled';
 
         // SYNC TO SHOPIFY: Create Fulfillment
-        try {
-            const mutation = `
-                mutation FulfillOrder {
-                    fulfillmentCreateV2(fulfillment: {
-                        notifyCustomer: true,
-                        lineItemsByFulfillmentOrder: [
-                            {
-                                fulfillmentOrderId: "gid://shopify/FulfillmentOrder/${order.fulfillment_id}"
-                            }
-                        ]
-                    }) {
-                        fulfillment { id status }
-                        userErrors { message }
+        if (order.fulfillment_id) {
+            try {
+                const mutation = `
+                    mutation FulfillOrder {
+                        fulfillmentCreateV2(fulfillment: {
+                            notifyCustomer: true,
+                            lineItemsByFulfillmentOrder: [
+                                {
+                                    fulfillmentOrderId: "gid://shopify/FulfillmentOrder/${order.fulfillment_id}"
+                                }
+                            ]
+                        }) {
+                            fulfillment { id status }
+                            userErrors { message }
+                        }
                     }
+                `;
+                const shopifyRes = await axios.post(process.env.SHOPIFY_ADMIN_API, { query: mutation }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+                    }
+                });
+
+                if (shopifyRes.data?.data?.fulfillmentCreateV2?.userErrors?.length > 0) {
+                    console.error("Shopify Sync Errors (Delivered):", shopifyRes.data.data.fulfillmentCreateV2.userErrors);
+                } else if (shopifyRes.data?.errors) {
+                    console.error("Shopify Sync API Errors (Delivered):", shopifyRes.data.errors);
+                } else {
+                    console.log(`Order ${order.order_id} fulfilled in Shopify successfully.`);
                 }
-            `;
-            await axios.post(process.env.SHOPIFY_ADMIN_API, { query: mutation }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-                }
-            });
-        } catch (err) {
-            console.error("Shopify Sync Error (Delivered):", err.response?.data || err.message);
+            } catch (err) {
+                console.error("Shopify Sync Exception (Delivered):", err.response?.data || err.message);
+            }
+        } else {
+            console.warn(`Order ${order.order_id} has no fulfillment_id. Cannot sync to Shopify.`);
         }
     }
     if (status === 'Cancelled') order.cancelled_at = new Date();
