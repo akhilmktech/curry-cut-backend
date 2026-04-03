@@ -162,7 +162,7 @@ export async function getTotalEarnings(vendorName = null) {
     });
   });
 
-  return total;
+  return total.toFixed(2);
 }
 
 export async function getRecentOrders(vendorName = null) {
