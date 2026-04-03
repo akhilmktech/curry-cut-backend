@@ -15,10 +15,26 @@ exports.getOrdersByCustomer = catchAsync(async (req, res, next) => {
       return res.status(400).json({ status: 'fail', message: 'Invalid customer ID' });
    }
 
-   const orders = await Order.find({ "customer.id": customerId }).sort({ created_at: -1 }).lean();
+   // Pagination parameters
+   const page = parseInt(req.query.page) || 1;
+   const limit = parseInt(req.query.limit) || 10;
+   const skip = (page - 1) * limit;
+
+   // Query MongoDB (all synced orders are stored here)
+   const orders = await Order.find({ "customer.id": customerId })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+   const total = await Order.countDocuments({ "customer.id": customerId });
 
    res.status(200).json({
       status: 'success',
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
       results: orders.length,
       data: orders,
    });

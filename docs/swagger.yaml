@@ -620,6 +620,18 @@ paths:
           schema:
             type: integer
           description: Numeric ID of the customer (Shopify ID)
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
       responses:
         '200':
           description: List of customer orders fetched successfully
@@ -629,7 +641,11 @@ paths:
                 type: object
                 properties:
                   status: { type: string, example: success }
-                  results: { type: integer }
+                  total: { type: integer, example: 100 }
+                  page: { type: integer, example: 1 }
+                  limit: { type: integer, example: 10 }
+                  totalPages: { type: integer, example: 10 }
+                  results: { type: integer, example: 10 }
                   data:
                     type: array
                     items:
