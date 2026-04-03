@@ -6,18 +6,6 @@
     "group": "Roles"
   },
   {
-    "_id": "68a548e6ac03cb9f0cc02faa",
-    "permission_name": "Vendor Filter",
-    "page_url": "/orders",
-    "group": "Orders"
-  },
-  {
-    "_id": "688af2f3ef438d274fecc8b0",
-    "permission_name": "test permission 2",
-    "page_url": "/test",
-    "group": "Test"
-  },
-  {
     "_id": "688c54338fe67b82dbbd6edf",
     "permission_name": "Edit Role",
     "page_url": "/roles",
@@ -36,40 +24,16 @@
     "group": "Users"
   },
   {
-    "_id": "691575c4b0373437ab0a0288",
-    "permission_name": "Product Edit",
-    "page_url": "/CreateProduct",
-    "group": "Products"
-  },
-  {
     "_id": "689af3597312464c45157855",
     "permission_name": "Order List",
     "page_url": "/orders",
     "group": "Orders"
   },
   {
-    "_id": "691575bab0373437ab0a0285",
-    "permission_name": "Product Add",
-    "page_url": "/CreateProduct",
-    "group": "Products"
-  },
-  {
     "_id": "688c54508fe67b82dbbd6ee6",
     "permission_name": "Add Role",
     "page_url": "/roles",
     "group": "Roles"
-  },
-  {
-    "_id": "68902105ed796e4f72c61569",
-    "permission_name": "test permission 4",
-    "page_url": "/test",
-    "group": "dd"
-  },
-  {
-    "_id": "688a0882d5c478040681cc02",
-    "permission_name": "test permission",
-    "page_url": "/test",
-    "group": "Test"
   },
   {
     "_id": "68a549fdac03cb9f0cc02fd8",
@@ -82,12 +46,6 @@
     "permission_name": "List Role",
     "page_url": "/roles",
     "group": "Roles"
-  },
-  {
-    "_id": "68901941a821e141ec3e47b6",
-    "permission_name": "test permission 3",
-    "page_url": "/test",
-    "group": "Test"
   },
   {
     "_id": "68a54a92ac03cb9f0cc02feb",
@@ -108,72 +66,6 @@
     "group": "Users"
   },
   {
-    "_id": "68a54b2eac03cb9f0cc03020",
-    "permission_name": "Order fulfill",
-    "page_url": "/orderDetails",
-    "group": "Orders"
-  },
-  {
-    "_id": "691575d5b0373437ab0a028b",
-    "permission_name": "Product List",
-    "page_url": "/products",
-    "group": "Products"
-  },
-  {
-    "_id": "6969e2cdf862c1fe3b6eb88f",
-    "permission_name": "Product Delete",
-    "page_url": "/products",
-    "group": "Products"
-  },
-  {
-    "_id": "6969e311f862c1fe3b6eb892",
-    "permission_name": "Home Layout View",
-    "page_url": "/homelayout",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e328f862c1fe3b6eb895",
-    "permission_name": "Home Layout Edit",
-    "page_url": "/homelayout",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e333f862c1fe3b6eb898",
-    "permission_name": "Home Layout Delete",
-    "page_url": "/homelayout",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e36af862c1fe3b6eb89b",
-    "permission_name": "Collection Image Delete",
-    "page_url": "/collectionImageUpload",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e374f862c1fe3b6eb89e",
-    "permission_name": "Collection Image Add",
-    "page_url": "/collectionImageUpload",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e393f862c1fe3b6eb8a1",
-    "permission_name": "Collection Image Edit",
-    "page_url": "/collectionImageUpload",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e39df862c1fe3b6eb8a4",
-    "permission_name": "Collection Image view",
-    "page_url": "/collectionImageUpload",
-    "group": "Mobile"
-  },
-  {
-    "_id": "6969e3adf862c1fe3b6eb8a7",
-    "permission_name": "Home Layout Add",
-    "page_url": "/collectionImageUpload",
-    "group": "Mobile"
-  },
-  {
     "_id": "69bbc76bbd284843d2275fb5",
     "permission_name": "Delivery Agent List",
     "page_url": "/delivery-agents",
@@ -182,12 +74,6 @@
   {
     "_id": "69bbc76cbd284843d2275fb8",
     "permission_name": "Delivery Agent Add",
-    "page_url": "/create-delivery-agent",
-    "group": "Delivery Agent"
-  },
-  {
-    "_id": "69bbc76cbd284843d2275fbb",
-    "permission_name": "Delivery Agent Edit",
     "page_url": "/create-delivery-agent",
     "group": "Delivery Agent"
   },
@@ -201,12 +87,12 @@
     "_id": "69bccc2bfb5410b76a4f784f",
     "permission_name": "Delivery Agent Update",
     "page_url": "/delivery-agents",
-    "group": "Delivery"
+    "group": "Delivery Agent"
   },
   {
     "_id": "69bccc2cfb5410b76a4f7853",
     "permission_name": "Delivery Agent Password Update",
     "page_url": "/delivery-agents",
-    "group": "Delivery"
+    "group": "Delivery Agent"
   }
 ]

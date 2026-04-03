@@ -147,6 +147,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
             { fulfillment_status: 'unfulfilled' },
             { fulfillment_status: { $exists: false } }
          ];
+         filter.cancelled_at = null;
       } else if (order_status === 'Cancelled') {
          filter.cancelled_at = { $ne: null };
       }

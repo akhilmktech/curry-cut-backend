@@ -9,28 +9,12 @@
     "Delivery Agent Update",
     "Delivery Agent Password Update"
   ],
-  "Mobile": [
-    "Home Layout View",
-    "Home Layout Edit",
-    "Home Layout Delete",
-    "Collection Image Delete",
-    "Collection Image Add",
-    "Collection Image Edit",
-    "Collection Image view",
-    "Home Layout Add"
-  ],
+
   "Orders": [
-    "Vendor Filter",
     "Order Details",
-    "Order List",
-    "Order fulfill"
+    "Order List"
   ],
-  "Products": [
-    "Product Edit",
-    "Product Add",
-    "Product List",
-    "Product Delete"
-  ],
+
   "Roles": [
     "Delete Role",
     "Edit Role",
