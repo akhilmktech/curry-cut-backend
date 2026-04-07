@@ -78,11 +78,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const user = await User.findById(req.user?.id)?.populate('role');
    const { search, financial_status, sortBy, from_date, to_date, assigned_status, order_status } = req.query;
 
-   if(user?.role?.role_name?.toLowerCase() == "vendor"){
-      const vendorName = user.name;
-      const result = await getVendorOrders(vendorName, page, limit,search, financial_status,sortBy);
-      return res.status(200).json(result)
-   }
+// Vendor role check removed to allow full order visibility for all dashboard users
 
    // Default sort
    let sort = { createdAt: -1 };
@@ -158,6 +154,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       .sort(sort)
       .skip(skip)
       .limit(limit)
+      .populate('assigned_agent')
       .lean(); 
 
    const total = await Order.countDocuments(filter);
@@ -316,11 +313,21 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
 exports.updateOrder = catchAsync(async (req, res, next) => {
    console.log("edit")
    const orderEditPayload = req.body?.order_edit;
+   
+   // Track modification
+   const order = await Order.findOne({ order_id: orderEditPayload?.order_id });
+   const user = await User.findById(req.user.id);
+
+   if (order) {
+      order.modified_by = req.user.id;
+      await order.save();
+   }
+
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
       order_id: orderEditPayload?.order_id,
       action: 'updated',
-      message: 'Order updated'
+      message: `Order updated by ${user?.name || 'Admin'}`
    });
    res.status(200).json({ status: "success", message: "Order updated successfully" });
 });
@@ -329,27 +336,18 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
 exports.cancelOrder = catchAsync(async (req, res, next) => {
    const orderCancelPayload = req.body;
    const order = await Order.findOne({ order_id: orderCancelPayload.id });
+   const user = await User.findById(req.user.id);
+
    order.cancelled_at = orderCancelPayload?.cancelled_at;
    order.cancel_reason = orderCancelPayload?.cancel_reason;
    order.financial_status = orderCancelPayload?.financial_status;
+   order.modified_by = req.user.id; // Track modification
    const now = new Date();
    order.line_items = order.line_items.map(item => ({
       ...item,
       deleted_date: now
    }));
    const data = await order.save();
-   await OrderTimeline.create({
-      order_id: orderCancelPayload.id,
-      action: 'cancelled',
-      changes: {
-         cancelled_at: orderCancelPayload?.cancelled_at,
-         cancel_reason: orderCancelPayload?.cancel_reason,
-         financial_status: orderCancelPayload?.financial_status,
-         deleted_items: order.line_items
-      },
-      message: 'Order cancelled'
-   });
-   res.status(200).json({ status: "success", message: "Order Cancelled successfully", data: data });
 })
 
 exports.getOrderById = catchAsync(async (req, res, next) => {
@@ -371,12 +369,7 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
    const user = await User.findById(req.user?.id).populate('role');
  
 
-   // Filter line items if user is a vendor
-   if (user?.role?.role_name?.toLowerCase() === "vendor") {
-
-      order.line_items = order.line_items?.filter(item => item.vendor_id?.toString() === req.user.id);
-    
-   }
+   // Vendor line item filtering removed to allow full order visibility for all dashboard users
 
    return res.status(200).json({
       status: "success",
@@ -447,14 +440,25 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
       }
 
       const order = await Order.findOne({ order_id: req.body.order_id });
+      const user = await User.findById(req.user.id);
+
       order.fulfillment_status = "Fulfilled"
       order.line_items = order.line_items?.map(item => ({ ...item, fulfillment_status: "Fulfilled" }));
       order.delivery_status = "Delivered"; // Ensure delivery_status is also updated
+      order.modified_by = req.user.id; // Track modification
+
+      // Auto-assignment for unassigned orders
+      if (!order.assigned_agent) {
+         order.assigned_agent = req.user.id;
+         order.agent_type = 'User';
+         order.assignment_date = new Date();
+      }
+
       const data = await order.save();
       await OrderTimeline.create({
          order_id: order.order_id,
          action: 'Delivered',
-         message: 'Order Delivered (Fulfilled)'
+         message: `Order marked as Delivered (Fulfilled) by ${user?.name || 'Admin'}`
       });
       res.status(201).json({
          status: "success",
@@ -557,6 +561,15 @@ exports.fulfillSingleItem = catchAsync(async (req, res, next) => {
        if (allFulfilled) {
          order.fulfillment_status = 'Fulfilled';
        }
+
+       order.modified_by = req.user.id; // Track modification
+        
+       // Auto-assignment for unassigned orders
+       if (!order.assigned_agent) {
+          order.assigned_agent = req.user.id;
+          order.agent_type = 'User';
+          order.assignment_date = new Date();
+       }
  
        const result = await order.save();
  
@@ -582,6 +595,47 @@ exports.fulfillSingleItem = catchAsync(async (req, res, next) => {
      });
    }
  });
+
+exports.pickupOrder = catchAsync(async (req, res, next) => {
+   const orderId = req.body.order_id || req.body.id;
+   const order = await Order.findOne({ order_id: orderId });
+   if (!order) throw new NotFoundError("Order not found");
+
+   const user = await User.findById(req.user.id);
+
+   order.fulfillment_status = "scheduled";
+   order.delivery_status = "Picked Up";
+   order.picked_up_at = new Date();
+   order.modified_by = req.user.id; // Track modification
+
+   // Auto-assignment for unassigned orders
+   if (!order.assigned_agent) {
+      order.assigned_agent = req.user.id;
+      order.agent_type = 'User';
+      order.assignment_date = new Date();
+   }
+
+   await order.save();
+
+   await OrderTimeline.create({
+      order_id: order.order_id,
+      action: 'Picked Up',
+      message: `Order marked as Picked Up (Scheduled) by ${user?.name || 'Admin'}`
+   });
+
+   // Match the structure of getOrderById for frontend consistency
+   const updatedOrder = await Order.findOne({ order_id: orderId }).populate('assigned_agent').lean();
+   const timeline = await OrderTimeline.find({ order_id: orderId }).sort({ created_at: -1 });
+
+   res.status(200).json({
+      status: "success",
+      message: "Order marked as Picked Up",
+      data: {
+         ...updatedOrder,
+         timeline
+      }
+   });
+});
 
 exports.deleteOrder = catchAsync(async(req,res,next)=>{
    const id = req.body.id

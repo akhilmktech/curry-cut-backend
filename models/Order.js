@@ -75,7 +75,9 @@ const orderSchema = new mongoose.Schema({
     }
   },
   line_items: [lineItemSchema],
-  assigned_agent: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryAgent', default: null },
+  assigned_agent: { type: mongoose.Schema.Types.ObjectId, refPath: 'agent_type', default: null },
+  agent_type: { type: String, enum: ['DeliveryAgent', 'User'], default: 'DeliveryAgent' },
+  modified_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   assignment_date: { type: Date, default: null },
   delivery_status: { type: String, enum: ['Pending', 'Picked Up', 'Delivered', 'Cancelled'], default: 'Pending' },
   picked_up_at: { type: Date, default: null },
