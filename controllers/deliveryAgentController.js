@@ -186,8 +186,8 @@ exports.assignAgentToOrder = catchAsync(async (req, res, next) => {
     const order = await Order.findOne({ order_id });
     if (!order) throw new NotFoundError('Order not found');
 
-    if (order.delivery_status === 'Delivered') {
-        return res.status(400).json({ status: 'error', message: "Cannot change delivery agent for a delivered order" });
+    if (order.fulfillment_status?.toLowerCase() === 'fulfilled') {
+        return res.status(400).json({ status: 'error', message: "Cannot change delivery agent for a fulfilled order" });
     }
 
     const agent = await DeliveryAgent.findById(agent_id);
